@@ -1,0 +1,22 @@
+
+CC = g++
+CFLAGS=-c -Wall -O3 -g
+
+OPENCV_PREFIX = /opt/local
+
+LIBDIR = -L/usr/X11R6/lib -L/Users/ktuite/Library/ann_1.1.2/lib -I$(OPENCV_PREFIX)/include
+INCDIR = -I/opt/local/include -I/Users/ktuite/Library/ann_1.1.2/include -L$(OPENCV_PREFIX)/lib 
+
+LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lgsl
+
+EXECUTABLE=collectionFlow
+SOURCES=FaceProcessApp.cpp
+
+all: $(EXECUTABLE)
+
+clean: 
+	rm -f *.o $(EXECUTABLE)
+    
+$(EXECUTABLE): $(SOURCES) 
+	$(CC) $(INCDIR) $(LIBDIR) $(SOURCES) -o $@ $(LIBS)
+
