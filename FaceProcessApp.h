@@ -20,6 +20,7 @@ public:
     char **argv;
 	
 	char inputFile[1024];
+	char outputDir[512];
 	vector<string> faceList;
 	int w, h;
 	vector<IplImage*> faceImages;

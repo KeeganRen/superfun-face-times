@@ -23,7 +23,8 @@ void error(char *msg) {
 void PrintUsage() 
 {
     printf("Usage:  \n" \
-            "   \t--inputFile [file containing list of pre-detected/cropped images to process]\n" \
+            "   \t--input [file containing list of pre-detected/cropped images to process]\n" \
+            "   \t--output [dir to put eigenface and low rank faces into]\n" \
             "\n");
 }
 
@@ -32,6 +33,7 @@ void FaceProcessApp::processOptions(int argc, char **argv){
         static struct option long_options[] = {
             {"help",        0, 0, 'h'},
             {"input",       1, 0, 400},
+            {"output",      1, 0, 401},
             {0,0,0,0} 
         };
 
@@ -50,6 +52,10 @@ void FaceProcessApp::processOptions(int argc, char **argv){
                 
             case 400:
                 sprintf(inputFile, "%s", optarg);
+                break;
+
+            case 401:
+                sprintf(outputDir, "%s", optarg);
                 break;
                 
             default: 
@@ -222,7 +228,7 @@ void FaceProcessApp::buildMatrixAndRunPca(){
 
         Mat m = im_mean;
         char filename[100];
-        sprintf(filename, "eigen%02d.jpg", i);
+        sprintf(filename, "%s/eigen%02d.jpg", outputDir, i);
         printf("[buildMatrixAndRunPca] saving eigenface to file: %s\n", filename);
         imwrite(filename, m);
     }
@@ -264,7 +270,7 @@ void FaceProcessApp::buildMatrixAndRunPca(){
 
         Mat m = pair;
         char filename[100];
-        sprintf(filename, "lowrankface%02d.jpg", i);
+        sprintf(filename, "%s/lowrankface%02d.jpg", outputDir, i);
         printf("[buildMatrixAndRunPca] saving low rank face approximation to file: %s\n", filename);
         imwrite(filename, m);
     }
