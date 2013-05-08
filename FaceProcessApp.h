@@ -14,6 +14,7 @@ public:
     void findImageSizeFromFirstImage();
     void openImages();
 	void convertImages();
+    void equalizeImages();
 	void buildMatrixAndRunPca();
 
     int argc;
@@ -21,7 +22,8 @@ public:
 	
 	char inputFile[1024];
 	char outputDir[512];
+    bool visualize;
 	vector<string> faceList;
-	int w, h;
+	int w, h, d;
 	vector<IplImage*> faceImages;
 };

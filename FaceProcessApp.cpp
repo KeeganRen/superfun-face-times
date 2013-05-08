@@ -34,6 +34,7 @@ void FaceProcessApp::processOptions(int argc, char **argv){
             {"help",        0, 0, 'h'},
             {"input",       1, 0, 400},
             {"output",      1, 0, 401},
+            {"visualize",   0, 0, 402},
             {0,0,0,0} 
         };
 
@@ -57,6 +58,10 @@ void FaceProcessApp::processOptions(int argc, char **argv){
             case 401:
                 sprintf(outputDir, "%s", optarg);
                 break;
+
+            case 402:
+                visualize = true;
+                break;
                 
             default: 
                 printf("Unrecognized option %d\n", c);
@@ -67,6 +72,7 @@ void FaceProcessApp::processOptions(int argc, char **argv){
 
 void FaceProcessApp::init(){
     printf("[init] Running program %s\n", argv[0]);
+    visualize = false;
     
     if (argc < 2 ){
         PrintUsage();
@@ -78,7 +84,8 @@ void FaceProcessApp::init(){
     loadFacesFromList();
     findImageSizeFromFirstImage();
     openImages();
-    convertImages();
+    //convertImages();
+    equalizeImages();
     buildMatrixAndRunPca();
     //outputSomeStuff(); 
 }
@@ -107,9 +114,10 @@ void FaceProcessApp::findImageSizeFromFirstImage(){
     img = cvLoadImage(firstImage, CV_LOAD_IMAGE_COLOR);
     w = img->width;
     h = img->height;
+    d = img->nChannels;
     cvReleaseImage(&img);
 
-    printf("[findImageSizeFromFirstImage] First image %s: (%d x %d)\n", firstImage, w, h);
+    printf("[findImageSizeFromFirstImage] First image %s: (%d x %d) %d channels\n", firstImage, w, h, d);
 }
 
 void FaceProcessApp::openImages(){
@@ -135,6 +143,9 @@ void FaceProcessApp::convertImages(){
         cvReleaseImage(&im_rgb);
     }
 
+    d = faceImages[0]->nChannels;
+    printf("[convertImages] Now there are %d channels\n", d);
+
     if (0){
         Mat m = faceImages[0];
         imshow("gray image", m);
@@ -142,9 +153,27 @@ void FaceProcessApp::convertImages(){
     }
 }
 
+void FaceProcessApp::equalizeImages(){
+    printf("[equalizeImages]\n");
+    for (int i = 0; i < faceImages.size(); i++){
+        IplImage *im_rgb  = faceImages[i];
+
+        CvSize s = cvSize(w,h);
+        int depth = im_rgb->depth;
+        IplImage* R = cvCreateImage(s, depth, 1);
+        IplImage* G = cvCreateImage(s, depth, 1);
+        IplImage* B = cvCreateImage(s, depth, 1);
+        cvSplit(im_rgb, R, G, B, NULL);
+        cvEqualizeHist(R, R);
+        cvEqualizeHist(G, G);
+        cvEqualizeHist(B, B);
+        cvMerge(R,G,B,NULL, im_rgb);
+    }  
+}
+
 void FaceProcessApp::buildMatrixAndRunPca(){
     printf("[buildMatrixAndRunPca] Let's do it! Image size: %d x %d\n", w, h);
-    int num_pixels = w*h;
+    int num_pixels = w*h*d;
     int num_images = faceImages.size();
 
     gsl_matrix *m_gsl_mat = gsl_matrix_calloc(num_pixels, num_images);
@@ -166,9 +195,9 @@ void FaceProcessApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Mean computed\n");
 
-    if (0){
+    if (visualize){
         // try making an image of the mean
-        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,1);
+        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,d);
         for (int j = 0; j < num_pixels; j++){
             (im_mean->imageData)[j] = (unsigned char)gsl_vector_get(m_gsl_mean, j);
         }
@@ -196,7 +225,7 @@ void FaceProcessApp::buildMatrixAndRunPca(){
         printf("\tSVD %d: %f\n", i, gsl_vector_get(S, i));
     }
 
-    if (0){
+    if (visualize){
         printf("first 100 values of first eigenface: \n");
         for (int j = 0; j < 100; j++){
             printf("%f ", gsl_matrix_get(m_gsl_mat, j, 0)*gsl_vector_get(S, 0));
@@ -205,7 +234,7 @@ void FaceProcessApp::buildMatrixAndRunPca(){
 
         // try visualizing eigenfaces
         for (int i = 0; i < 4; i++){
-            IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,1);
+            IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,d);
             gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
             for (int j = 0; j < num_pixels; j++){    
@@ -219,7 +248,7 @@ void FaceProcessApp::buildMatrixAndRunPca(){
     }
 
     for (int i = 0; i < 4; i++){
-        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,1);
+        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,d);
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
         for (int j = 0; j < num_pixels; j++){    
@@ -253,14 +282,14 @@ void FaceProcessApp::buildMatrixAndRunPca(){
 
     // try visualizing faces in lower space
     for (int i = 0; i < num_images; i++){
-        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,1);
+        IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,d);
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
         for (int j = 0; j < num_pixels; j++){    
             (im_mean->imageData)[j] = (unsigned char) (gsl_vector_get(&col.vector, j) + gsl_vector_get(m_gsl_mean, j));
         }
 
-        IplImage* pair = cvCreateImage(cvSize(w*2, h), IPL_DEPTH_8U, 1);
+        IplImage* pair = cvCreateImage(cvSize(w*2, h), IPL_DEPTH_8U, d);
         cvZero(pair);
         cvSetImageROI(pair, cvRect(0, 0, w, h));
         cvCopy(faceImages[i], pair);
