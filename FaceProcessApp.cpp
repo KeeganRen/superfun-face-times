@@ -278,6 +278,22 @@ void FaceProcessApp::buildMatrixAndRunPca(){
         imwrite(filename, m);
     }
 
+    IplImage *im_mean = cvCreateImage(cvSize(w,h),IPL_DEPTH_8U,d);
+    for (int j = 0; j < num_pixels; j++){    
+        int c = gsl_vector_get(m_gsl_mean, j);
+        if (c < 0) 
+            c = 0;
+        if (c > 255)
+            c = 255;
+        (im_mean->imageData)[j] = c;
+    }
+
+    Mat m = im_mean;
+    char filename[100];
+    sprintf(filename, "%s/mean.jpg", outputDir);
+    printf("[buildMatrixAndRunPca] saving mean face to file: %s\n", filename);
+    imwrite(filename, m);
+
 
     gsl_matrix *S_mat = gsl_matrix_calloc(num_images, num_images);
     gsl_matrix_set_zero(S_mat);

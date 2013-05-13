@@ -13,17 +13,17 @@ public:
     void loadFacesFromList();
     void findImageSizeFromFirstImage();
     void openImages();
-	void convertImages();
+    void convertImages();
     void equalizeImages();
-	void buildMatrixAndRunPca();
+    void buildMatrixAndRunPca();
 
     int argc;
     char **argv;
-	
-	char inputFile[1024];
-	char outputDir[512];
+    
+    char inputFile[1024];
+    char outputDir[512];
     bool visualize;
-	vector<string> faceList;
-	int w, h, d;
-	vector<IplImage*> faceImages;
+    vector<string> faceList;
+    int w, h, d;
+    vector<IplImage*> faceImages;
 };

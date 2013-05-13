@@ -7,16 +7,21 @@ OPENCV_PREFIX = /opt/local
 LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include
 INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib 
 
-LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lgsl
+LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl
 
-EXECUTABLE=eigenface
-SOURCES=FaceProcessApp.cpp
+EIGENFACE=eigenface
+EIGENSOURCES=FaceProcessApp.cpp
 
-all: $(EXECUTABLE)
+WARPFACE=warpFace
+WARPSOURCES=WarpFaceApp.cpp
+
+all: $(EIGENFACE) $(WARPFACE)
 
 clean: 
-	rm -f *.o $(EXECUTABLE)
+	rm -f *.o $(EIGENFACE) $(WARPFACE)
     
-$(EXECUTABLE): $(SOURCES) 
-	$(CC) $(INCDIR) $(LIBDIR) $(SOURCES) -o $@ $(LIBS)
+$(EIGENFACE): $(EIGENSOURCES) 
+	$(CC) $(INCDIR) $(LIBDIR) $(EIGENSOURCES) -o $@ $(LIBS)
 
+$(WARPFACE): $(WARPSOURCES) 
+	$(CC) $(INCDIR) $(LIBDIR) $(WARPSOURCES) -o $@ $(LIBS)
