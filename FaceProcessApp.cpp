@@ -85,7 +85,7 @@ void FaceProcessApp::init(){
     findImageSizeFromFirstImage();
     openImages();
     //convertImages();
-    equalizeImages();
+    //equalizeImages();
     buildMatrixAndRunPca();
     //outputSomeStuff(); 
 }
