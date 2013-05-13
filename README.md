@@ -1,5 +1,3 @@
-# super fun face times!! #
-
 Hello, friends! I am writing code to do things with faces. Let's face it... aw crap, I can't think of anything to say next. 
 
 ## Things you should know: ##
