@@ -104,6 +104,7 @@ void WarpFaceApp::loadFaceImage(){
     faceImage = cvLoadImage(faceImageFile, CV_LOAD_IMAGE_COLOR);
     if (!faceImage){
         printf("Error loading image %s\n", faceImageFile);
+        exit(1);
     }
 }
 
@@ -225,6 +226,13 @@ void WarpFaceApp::makeNewFace(){
         new_face_mat.at<Vec3b>(new_x, new_y) = face_image_mat.at<Vec3b>(photo_y, photo_x);
     }
     
+    Mat drawable = faceImage;
+    for (int i = 0; i < mesh.size(); i++){
+        circle(drawable, newPoints[i], 1, CV_RGB(0, 100, 255), 2, 8, 0);
+    }
+    imshow("projected face", drawable);
+    cvWaitKey(0);
+
     imwrite(outFaceFile, new_face_mat);
     //imshow("new face", new_face_mat);
     //cvWaitKey(0);
