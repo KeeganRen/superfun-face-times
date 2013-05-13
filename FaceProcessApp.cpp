@@ -85,7 +85,7 @@ void FaceProcessApp::init(){
     findImageSizeFromFirstImage();
     openImages();
     //convertImages();
-    equalizeImages();
+    //equalizeImages();
     buildMatrixAndRunPca();
     //outputSomeStuff(); 
 }
@@ -238,10 +238,15 @@ void FaceProcessApp::buildMatrixAndRunPca(){
             gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
             for (int j = 0; j < num_pixels; j++){    
-                (im_mean->imageData)[j] = (unsigned char) (gsl_vector_get(&col.vector, j)*gsl_vector_get(S,i) + gsl_vector_get(m_gsl_mean, j));
+                int c =  (unsigned char) (gsl_vector_get(&col.vector, j)*(gsl_vector_get(S,i)));
+                if (c < 0) 
+                    c = 0;
+                if (c > 255)
+                    c = 255;
+                (im_mean->imageData)[j] = c;
             }
             Mat m = im_mean;
-            imshow("mean image", m);
+            imshow("eigenface image", m);
             printf("showing image %d\n", i);
             cvWaitKey(0);
         }
@@ -252,7 +257,12 @@ void FaceProcessApp::buildMatrixAndRunPca(){
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
         for (int j = 0; j < num_pixels; j++){    
-            (im_mean->imageData)[j] = (unsigned char) (gsl_vector_get(&col.vector, j)*gsl_vector_get(S,i) + gsl_vector_get(m_gsl_mean, j));
+            int c = (int)(gsl_vector_get(&col.vector, j)*gsl_vector_get(S,i) + gsl_vector_get(m_gsl_mean, j));
+            if (c < 0) 
+                c = 0;
+            if (c > 255)
+                c = 255;
+            (im_mean->imageData)[j] = c;
         }
 
         Mat m = im_mean;
@@ -286,7 +296,13 @@ void FaceProcessApp::buildMatrixAndRunPca(){
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
 
         for (int j = 0; j < num_pixels; j++){    
-            (im_mean->imageData)[j] = (unsigned char) (gsl_vector_get(&col.vector, j) + gsl_vector_get(m_gsl_mean, j));
+            int c = (gsl_vector_get(&col.vector, j) + gsl_vector_get(m_gsl_mean, j));
+            if (c < 0) 
+                c = 0;
+            if (c > 255)
+                c = 255;
+            (im_mean->imageData)[j] = c;
+
         }
 
         IplImage* pair = cvCreateImage(cvSize(w*2, h), IPL_DEPTH_8U, d);
