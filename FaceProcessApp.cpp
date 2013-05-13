@@ -85,7 +85,7 @@ void FaceProcessApp::init(){
     findImageSizeFromFirstImage();
     openImages();
     //convertImages();
-    //equalizeImages();
+    equalizeImages();
     buildMatrixAndRunPca();
     //outputSomeStuff(); 
 }
@@ -156,18 +156,24 @@ void FaceProcessApp::convertImages(){
 void FaceProcessApp::equalizeImages(){
     printf("[equalizeImages]\n");
     for (int i = 0; i < faceImages.size(); i++){
-        IplImage *im_rgb  = faceImages[i];
 
-        CvSize s = cvSize(w,h);
-        int depth = im_rgb->depth;
-        IplImage* R = cvCreateImage(s, depth, 1);
-        IplImage* G = cvCreateImage(s, depth, 1);
-        IplImage* B = cvCreateImage(s, depth, 1);
-        cvSplit(im_rgb, R, G, B, NULL);
-        cvEqualizeHist(R, R);
-        cvEqualizeHist(G, G);
-        cvEqualizeHist(B, B);
-        cvMerge(R,G,B,NULL, im_rgb);
+        if (d == 3){
+            IplImage *im_rgb  = faceImages[i];
+            CvSize s = cvSize(w,h);
+            int depth = im_rgb->depth;
+            IplImage* R = cvCreateImage(s, depth, 1);
+            IplImage* G = cvCreateImage(s, depth, 1);
+            IplImage* B = cvCreateImage(s, depth, 1);
+            cvSplit(im_rgb, R, G, B, NULL);
+            cvEqualizeHist(R, R);
+            cvEqualizeHist(G, G);
+            cvEqualizeHist(B, B);
+            cvMerge(R,G,B,NULL, im_rgb);
+        }
+        else if (d == 1){
+            IplImage *im_gray  = faceImages[i];
+            cvEqualizeHist(im_gray, im_gray);
+        }
     }  
 }
 
