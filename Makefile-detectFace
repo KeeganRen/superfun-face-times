@@ -1,0 +1,65 @@
+#augh this is a monstrosity of a makefile
+
+CC = g++
+CFLAGS=-c -Wall -O3 -g
+
+OPENCV_PREFIX = /opt/local
+
+LIBDIR = -L/usr/X11R6/lib -L/Users/ktuite/Library/boost_1_51_0/stage/lib
+INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I$(OPENCV_PREFIX)/include 
+
+LIBS = -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_objdetect -lopencv_video -lboost_system -lopencv_calib3d -lgsl
+
+FLOWSOURCES=GaussianPyramid.cpp OpticalFlow.cpp CVOpticalFlow.cpp Stochastic.cpp
+FLOWOBJECTS=$(FLOWSOURCES:.cpp=.o)
+FLOWFLAGS=-D_LINUX_MAC -D_OPENCV -I/opt/local/include/opencv 
+
+# collection flow stuff which at this point uses jason's face tracker
+DETECTFACE=detectFaces
+DETECTFACEFLAGS=-Wextra -Wall -pedantic-errors -Wno-long-long -arch x86_64 -O3 $(FLOWFLAGS) 
+DETECTFACEINCLUDES=-I./tracker_include/ -I/Users/ktuite/Library/boost_1_51_0/ $(INCDIR) 
+
+# Files which require compiling
+SOURCE_FILES=\
+	tracker/lib/IO.cc\
+	tracker/lib/PDM.cc\
+	tracker/lib/Patch.cc\
+	tracker/lib/CLM.cc\
+	tracker/lib/FDet.cc\
+	tracker/lib/PAW.cc\
+	tracker/lib/FCheck.cc\
+	tracker/lib/Tracker.cc
+
+# Source files which contain a int main(..) function
+SOURCE_FILES_WITH_MAIN=DetectFaceApp.cc
+
+# End Configuration
+SOURCE_OBJECTS=$(patsubst %.cc,%.o,$(SOURCE_FILES))
+
+ALL_OBJECTS=\
+	$(SOURCE_OBJECTS) 
+
+DEPENDENCY_FILES=\
+	$(patsubst %.o,%.d,$(ALL_OBJECTS)) 
+
+
+all: $(EIGENFACE) $(WARPFACE) $(FLOWFACE) $(DETECTFACE)
+
+
+%.o: %.cc Makefile.mac
+	@# Make dependecy file
+	$(CC) -MM -MT $@ -MF $(patsubst %.cc,%.d,$<) $(DETECTFACEFLAGS) $(DETECTFACEINCLUDES) $<
+	@# Compile
+	$(CC) $(DETECTFACEFLAGS) $(DETECTFACEINCLUDES) -c -o $@ $< 
+
+-include $(DEPENDENCY_FILES)
+
+.cpp.o:
+	$(CC) $(FLOWFLAGS) $(INCDIR) $< -o $@ -c
+
+$(DETECTFACE): $(SOURCE_FILES_WITH_MAIN) $(ALL_OBJECTS) $(FLOWOBJECTS)
+	$(CC) $(FLOWFLAGS) $(INCDIR) $(DETECTFACEINCLUDES) $(LIBDIR) $(SOURCE_FILES_WITH_MAIN) $(ALL_OBJECTS) $(FLOWOBJECTS) -o $@ $(LIBS)
+
+
+clean: 
+	rm -f *.o $(DETECTFACE)

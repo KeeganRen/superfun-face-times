@@ -2,10 +2,13 @@
 #include <vector>
 #include <string>
 #include <opencv2/opencv.hpp>
+#include "CVOpticalFlow.h"
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_blas.h>
 
 using namespace std;
 
-class FaceProcessApp
+class CollectionFlowApp
 {
 public:
     void processOptions(int argc, char **argv);
@@ -14,8 +17,12 @@ public:
     void findImageSizeFromFirstImage();
     void openImages();
     void convertImages();
-    void equalizeImages();
+    void putInGslMatrix();
     void buildMatrixAndRunPca();
+    void saveAs(char* filename, Mat m);
+    
+    void gslVecToMat(gsl_vector *vec, Mat &m);
+    void matToGslVec(Mat &m, gsl_vector *vec);
 
     int argc;
     char **argv;
@@ -23,7 +30,8 @@ public:
     char inputFile[1024];
     char outputDir[512];
     bool visualize;
+    bool gray;
     vector<string> faceList;
     int w, h, d;
-    vector<IplImage*> faceImages;
+    vector<Mat> faceImages;
 };

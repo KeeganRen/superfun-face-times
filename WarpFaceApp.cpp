@@ -175,7 +175,7 @@ void WarpFaceApp::populateModelPoints(){
 void WarpFaceApp::findTransformation(){
     printf("[findTransformation]\n");
 
-    float fx = 40000;
+    float fx = 4000;
     cameraMatrix = Matx33f(fx, 0, 0, 0, fx, 0, 0, 0, 1);
     vector<double> rv(3), tv(3);
     distortion_coefficients = Mat(5,1,CV_64FC1);

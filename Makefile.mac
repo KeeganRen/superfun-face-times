@@ -9,19 +9,31 @@ INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib
 
 LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl
 
-EIGENFACE=eigenface
-EIGENSOURCES=FaceProcessApp.cpp
+COLLECTIONFLOWFACE=collectionFlow
+COLLECTIONFLOWSOURCES=CollectionFlowApp.cpp
 
 WARPFACE=warpFace
 WARPSOURCES=WarpFaceApp.cpp
 
-all: $(EIGENFACE) $(WARPFACE)
+FLOWFACE=flowFace
+FLOWSOURCES=GaussianPyramid.cpp OpticalFlow.cpp CVOpticalFlow.cpp Stochastic.cpp
+FLOWOBJECTS=$(FLOWSOURCES:.cpp=.o)
+FLOWFLAGS=-D_LINUX_MAC -D_OPENCV -I/opt/local/include/opencv 
+
+all: $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) 
 
 clean: 
-	rm -f *.o $(EIGENFACE) $(WARPFACE)
-    
-$(EIGENFACE): $(EIGENSOURCES) 
-	$(CC) $(INCDIR) $(LIBDIR) $(EIGENSOURCES) -o $@ $(LIBS)
+	rm -f *.o $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE)
+	    
+$(COLLECTIONFLOWFACE): $(COLLECTIONFLOWSOURCES)  $(FLOWOBJECTS) 
+	$(CC) $(FLOWFLAGS) $(INCDIR) $(LIBDIR) $(COLLECTIONFLOWSOURCES) $(FLOWOBJECTS)  -o $@ $(LIBS)
 
 $(WARPFACE): $(WARPSOURCES) 
 	$(CC) $(INCDIR) $(LIBDIR) $(WARPSOURCES) -o $@ $(LIBS)
+
+$(FLOWFACE):  FlowFaceApp.cpp $(FLOWOBJECTS) 
+	$(CC) $(FLOWFLAGS) $(INCDIR) $(LIBDIR) FlowFaceApp.cpp $(FLOWOBJECTS) -o $@ $(LIBS)
+
+
+.cpp.o:
+	$(CC) $(FLOWFLAGS) $(INCDIR) $< -o $@ -c
