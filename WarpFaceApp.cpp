@@ -25,9 +25,14 @@ void PrintUsage()
 {
     printf("Usage:  \n" \
             "   \t--faceImage [image with of the face]\n" \
-            "   \t--facePoints [text file with detected face points]\n" \
-            "   \t--faceMesh [text file with list of thousands of points to use for coloring]\n" \
+            "   \t--facePoints [text file with detected fiducial points]\n" \
+            "   \t--templateMesh [template 3D point cloud]\n" \
+            "   \t--templatePoints [the 3d canonical points]\n" \
             "   \t--output [image to save warped face to]\n" \
+            "\n\n" \
+            "   \t /warpFace --faceImage test/108.jpg --facePoints test/108.txt "\
+            "--templateMesh model/igor.txt --templatePoints model/igor-canonical.txt "\
+            "--canonicalPoints model/canonical_faceforest.txt" \
             "\n");
 }
 
@@ -37,8 +42,10 @@ void WarpFaceApp::processOptions(int argc, char **argv){
             {"help",        0, 0, 'h'},
             {"faceImage",       1, 0, 400},
             {"facePoints",      1, 0, 401},
-            {"faceMesh",        1, 0, 402},
+            {"templateMesh",        1, 0, 402},
             {"output",          1, 0, 403},
+            {"templatePoints",        1, 0, 404},
+            {"canonicalPoints",        1, 0, 405},
             {0,0,0,0} 
         };
 
@@ -64,11 +71,19 @@ void WarpFaceApp::processOptions(int argc, char **argv){
                 break;
                 
             case 402:
-                sprintf(faceMeshFile, "%s", optarg);
+                sprintf(templateMeshFile, "%s", optarg);
                 break;
 
             case 403:
                 sprintf(outFaceFile, "%s", optarg);
+                break;
+
+            case 404:
+                sprintf(templatePointsFile, "%s", optarg);
+                break;
+
+            case 405:
+                sprintf(canonicalPointsFile, "%s", optarg);
                 break;
 
             default: 
@@ -88,28 +103,26 @@ void WarpFaceApp::init(){
     
     processOptions(argc, argv);
 
-    loadFaceMesh();
-    loadFaceImage();
-    loadFacePoints();
+    loadTemplateFiles();
+    loadFaceSpecificFiles();
 
-    populateModelPoints();
-    findTransformation();
+    getColorFromImage();
+    //findTransformation();
     
-    makeNewFace();
+    //makeNewFace();
    
 }
 
-void WarpFaceApp::loadFaceImage(){
-    printf("[loadFaceImage] loading image of face from file %s\n", faceImageFile);
-    faceImage = cvLoadImage(faceImageFile, CV_LOAD_IMAGE_COLOR);
-    if (!faceImage){
+void WarpFaceApp::loadFaceSpecificFiles(){
+    printf("[loadFaceSpecificFiles] loading image of face from file %s\n", faceImageFile);
+    faceImage = imread(faceImageFile, CV_LOAD_IMAGE_COLOR);
+    if (faceImage.data == NULL){
         printf("Error loading image %s\n", faceImageFile);
         exit(1);
     }
-}
+    faceImage.convertTo(faceImage, CV_64FC3, 1.0/255, 0);
 
-void WarpFaceApp::loadFacePoints(){
-    printf("[loadFaceImage] loading pre-detected 10 points of face from file %s\n", facePointsFile);
+    printf("[loadFaceSpecificFiles] loading pre-detected 10 points of face from file %s\n", facePointsFile);
     FILE *file = fopen ( facePointsFile, "r" );
     if ( file != NULL ) {
         float x, y;
@@ -123,92 +136,218 @@ void WarpFaceApp::loadFacePoints(){
     }
 }
 
+void WarpFaceApp::loadTemplateFiles(){
+    printf("[loadTemplateFiles] loading canonical face points file %s\n", canonicalPointsFile);
+    FILE *file;
 
-void WarpFaceApp::loadFaceMesh(){
-    printf("[loadFaceMesh] loading lots of points on a 3D face model file %s\n", faceMeshFile);
-    FILE *file = fopen ( faceMeshFile, "r" );
+    file = fopen ( canonicalPointsFile, "r" );
     if ( file != NULL ) {
-        float x, y, z;
-        while( fscanf(file, "%f %f %f\n", &x, &y, &z) > 0 ) {
-            faceMesh.push_back(Point3f(x,y,z));
+        float x, y;
+        while( fscanf(file, "%f %f\n", &x, &y) > 0 ) {
+            canonicalPoints.push_back(Point2f(x,y));
         }
         fclose (file);
     }
     else {
-        perror (faceMeshFile);
+        perror (canonicalPointsFile);
     }
-    printf("[loadFaceMesh] %d points loaded\n", (int)faceMesh.size());
-}
+    printf("[loadTemplateFiles] sweet, {{%d}} canonical (2d) points loaded\n", (int)canonicalPoints.size());
 
-void WarpFaceApp::populateModelPoints(){
-    modelPoints.push_back(Point3f(90.0, 36.0, 68.0));
-    pointLabels.push_back("left eye (left)");
-    modelPoints.push_back(Point3f(90.0, 65.0, 71.0));
-    pointLabels.push_back("left eye (right");
-    modelPoints.push_back(Point3f(156.0, 58.0, 72.0));
-    pointLabels.push_back("mouth corner (left)");
-    modelPoints.push_back(Point3f(156.0, 116.0, 72.0));
-    pointLabels.push_back("mouth corner (right)");
-    modelPoints.push_back(Point3f(167.0, 87.0, 87.0));
-    pointLabels.push_back("mouth bottom");
-    modelPoints.push_back(Point3f(150.0, 87.0, 92.0));
-    pointLabels.push_back("mouth top");
-    modelPoints.push_back(Point3f(90.0, 106.0, 71.0));
-    pointLabels.push_back("right eye (left)");
-    modelPoints.push_back(Point3f(90.0, 135.0, 68.0));
-    pointLabels.push_back("right eye (right)");
-    modelPoints.push_back(Point3f(134.0, 71.0, 86.0));
-    pointLabels.push_back("nose base (left)");
-    modelPoints.push_back(Point3f(134.0, 102.0, 83.0));
-    pointLabels.push_back("nose base (right)");
-
-    /*
-    for (int i = 0; i < facePoints.size(); i++){
-        printf("\t%s \t2D: %f %f \t3D: %f %f %f \n", 
-            pointLabels[i].c_str(), 
-            facePoints[i].x, facePoints[i].y, 
-            modelPoints[i].x, modelPoints[i].y, modelPoints[i].z);
+    printf("[loadTemplateFiles] loading template face mesh from file %s\n", templateMeshFile);
+    file = fopen ( templateMeshFile, "r" );
+    if ( file != NULL ) {
+        float x, y, z, nx, ny, nz;
+        int r, g, b, a;
+        while( fscanf(file, "%f %f %f %f %f %f %d %d %d %d \n", &x, &y, &z, &nx, &ny, &nz, &r, &g, &b, &a) > 0 ) {
+            templateMesh.push_back(Point3f(x,y,z));
+            templateNormals.push_back(Point3f(nx,ny,nz));
+            templateColors.push_back(Point3f(r,g,b));
+        }
+        fclose (file);
     }
-    */
+    else {
+        perror (templateMeshFile);
+    }
+    printf("[loadTemplateFiles] yay, {{%d}} points loaded into templateMesh\n", (int)templateMesh.size());
+
+
+    printf("[loadTemplateFiles] loading 3d canonical points corresponding to face mesh from file %s\n", templatePointsFile);
+    file = fopen ( templatePointsFile, "r" );
+    if ( file != NULL ) {
+        float x, y, z;
+        while( fscanf(file, "%f,%f,%f\n", &x, &y, &z) > 0 ) {
+            templatePoints.push_back(Point3f(x,y,z));
+        }
+        fclose (file);
+    }
+    else {
+        perror (templatePointsFile);
+    }
+
+    printf("[loadTemplateFiles] huzzah, {{%d}} points loaded into templatePoints\n", (int)templatePoints.size());
 }
 
 void WarpFaceApp::findTransformation(){
     printf("[findTransformation]\n");
 
-    float fx = 4000;
+    fx = 4000;
     cameraMatrix = Matx33f(fx, 0, 0, 0, fx, 0, 0, 0, 1);
     vector<double> rv(3), tv(3);
     distortion_coefficients = Mat(5,1,CV_64FC1);
     rvec = Mat(3, 1, CV_64FC1);
     tvec = Mat(3, 1,CV_64FC1); 
-    bool b = solvePnP(modelPoints, facePoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
-    /*
-    printf("what happened with solvepnp? %d\n", b);
+
+    vector<Point2f> new_points;
+   
+    // transform between template and canonical front-of-face view
+    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
     cout << "cameraMatrix: " << cameraMatrix << endl;
     cout << "rvec: " << rvec << endl;
     cout << "tvec: " << tvec << endl;
     cout << "distortion_coefficients: " << distortion_coefficients << endl;
-    */
-        
-    /*
-    vector<Point2f> newPoints;
-    projectPoints(modelPoints, rvec, tvec, cameraMatrix, distortion_coefficients, newPoints);
+
+    // project onto canonical view
+    projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+    Mat templateImage = Mat::zeros(500, 500, CV_8UC3);
+    for (int i = 0; i < templateMesh.size(); i++){
+        //Point3d color = templateColors[i];
+        Point3f normal = templateNormals[i];
+        Point3d color;
+        float f = 100.0;
+        color.x = normal.x * f;
+        color.y = normal.y * f;
+        color.z = normal.z * f;
+        circle(templateImage, new_points[i], .7, CV_RGB(color.x, color.y, color.z), 2, 8, 0);
+    }
+    Rect cropROI(128, 80, 250, 310);
+    templateImage = templateImage(cropROI);
+    imshow("all points drawn on canonical thinggy", templateImage);
+    cvWaitKey(0);
+
+    // transformation between 3D mesh points and image
+    solvePnP(templatePoints, facePoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
+    cout << "cameraMatrix: " << cameraMatrix << endl;
+    cout << "rvec: " << rvec << endl;
+    cout << "tvec: " << tvec << endl;
+    cout << "distortion_coefficients: " << distortion_coefficients << endl;
+    
+    // project template canonical points onto image
+    projectPoints(templatePoints, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
 
     Mat drawable = faceImage;
     for (int i = 0; i < facePoints.size(); i++){
-        printf("\t%f %f \tvs \t%f %f\n", facePoints[i].x, facePoints[i].y, newPoints[i].x, newPoints[i].y);
+        printf("\t%f %f \tvs \t%f %f\n", facePoints[i].x, facePoints[i].y, new_points[i].x, new_points[i].y);
         circle(drawable, facePoints[i], 4, CV_RGB(255, 0, 0), 2, 8, 0);
-        circle(drawable, newPoints[i], 4, CV_RGB(0, 100, 255), 2, 8, 0);
+        circle(drawable, new_points[i], 4, CV_RGB(0, 100, 255), 2, 8, 0);
     }
     imshow("projected points", drawable);
     cvWaitKey(0);
-    */
+
+    // project all template points onto image
+    projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+    drawable = faceImage;
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f color = templateColors[i];
+        circle(drawable, new_points[i], .7, CV_RGB(color.x, color.y, color.z), 2, 8, 0);
+    }
+    imshow("all points", drawable);
+    cvWaitKey(0);
+    
+}
+
+void WarpFaceApp::getColorFromImage(){
+    printf("[getColorFromImage]\n");
+
+    fx = 4000;
+    cameraMatrix = Matx33f(fx, 0, 0, 0, fx, 0, 0, 0, 1);
+    vector<double> rv(3), tv(3);
+    distortion_coefficients = Mat(5,1,CV_64FC1);
+    rvec = Mat(3, 1, CV_64FC1);
+    tvec = Mat(3, 1,CV_64FC1); 
+
+    vector<Point2f> new_points;
+   
+    // transform between template and canonical front-of-face view
+    solvePnP(templatePoints, facePoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
+    cout << "cameraMatrix: " << cameraMatrix << endl;
+    cout << "rvec: " << rvec << endl;
+    cout << "tvec: " << tvec << endl;
+    cout << "distortion_coefficients: " << distortion_coefficients << endl;
+
+    // project onto canonical view
+    projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+    vector<Point3f> new_colors;
+
+    for (int i = 0; i < new_points.size(); i++){
+        double c[3];
+        bilinear(c, faceImage, new_points[i].x, new_points[i].y);
+        //new_colors.push_back(Point3d(122, 44, 39));
+        new_colors.push_back(Point3d(c[0], c[1], c[2]));
+    }
+
+    // transform between template and canonical front-of-face view
+    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
+    cout << "cameraMatrix: " << cameraMatrix << endl;
+    cout << "rvec: " << rvec << endl;
+    cout << "tvec: " << tvec << endl;
+    cout << "distortion_coefficients: " << distortion_coefficients << endl;
+
+    // project onto canonical view
+    projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+    Mat drawable = Mat::zeros(500, 500, CV_32FC3);
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f color = new_colors[i];
+        circle(drawable, new_points[i], 4, CV_RGB(color.z, color.y, color.x), 0, 8, 0);
+    }
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f color = new_colors[i];
+        circle(drawable, new_points[i], 2, CV_RGB(color.z, color.y, color.x), 0, 8, 0);
+    }
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f color = new_colors[i];
+        circle(drawable, new_points[i], 1, CV_RGB(color.z, color.y, color.x), 0, 8, 0);
+    }
+    imshow("all points", drawable);
+    cvWaitKey(0);
+
+}
+
+void WarpFaceApp::clip(int &a, int lo, int hi) {
+    a = (a < lo) ? lo : (a>=hi ? hi-1: a);
+}
+
+void WarpFaceApp::bilinear(double *out, Mat im, float c, float r){
+    int r0 = r, r1 = r+1;
+    int c0 = c, c1 = c+1;
+    clip(r0, 0, im.rows);
+    clip(r1, 0, im.rows);
+    clip(c0, 0, im.cols);
+    clip(c1, 0, im.cols);
+
+    double tr = r - r0;
+    double tc = c - c0;
+    for (int i=0; i<3; i++) {
+        double ptr00 = im.at<Vec3d>(r0, c0)[i];
+        double ptr01 = im.at<Vec3d>(r0, c1)[i];
+        double ptr10 = im.at<Vec3d>(r1, c0)[i];
+        double ptr11 = im.at<Vec3d>(r1, c1)[i];
+        out[i] = ((1-tr) * (tc * ptr01 + (1-tc) * ptr00) + tr * (tc * ptr11 + (1-tc) * ptr10));
+
+    }
 }
 
 void WarpFaceApp::makeNewFace(){
     printf("[makeNewFace]\n");
     
-    vector<Point3f> mesh = faceMesh;
+    vector<Point3f> mesh = templateMesh;
 
     vector<Point2f> newPoints;
     projectPoints(mesh, rvec, tvec, cameraMatrix, distortion_coefficients, newPoints);
