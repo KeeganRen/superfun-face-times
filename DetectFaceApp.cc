@@ -232,7 +232,9 @@ void DetectFaceApp::alignFace(Mat &frame, Mat &shape, Mat &visi){
         cout << "transform = "<< endl << " "  << transform << endl << endl;
 
         Mat warped = Mat::zeros(500, 500, frame.type() );
-        warpAffine(frame, warped, transform, warped.size() );
+        if (transform.data != NULL){
+            warpAffine(frame, warped, transform, warped.size() );
+        }
         frame = warped;
         visualizeFrame("warped", frame);
     }

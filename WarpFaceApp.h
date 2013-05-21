@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <opencv2/opencv.hpp>
+#include <gsl/gsl_linalg.h>
+
 
 using namespace std;
 using namespace cv;
@@ -11,14 +13,22 @@ class WarpFaceApp
 public:
     void processOptions(int argc, char **argv);
     void init();
+    void loadImageList();
     void loadTemplateFiles();
     void loadFaceSpecificFiles();
     void getColorFromImage();
     void findTransformation();
-    void makeNewFace();
+
+    void setupShapeStuff();
+    void populateTemplateMatrix();
+    void populateImageMatrix();
+    void shapeStuff();
+    void solveStuff();
 
     void clip(int &a, int lo, int hi);
     void bilinear(double *out, Mat im, float c, float r);
+
+    vector<Point2f> loadPoints(const char* filename);
 
     int argc;
     char **argv;
@@ -29,8 +39,14 @@ public:
     char templatePointsFile[1024];
     char canonicalPointsFile[1024];
     char outFaceFile[1024];
+    char listFile[1024];
+    bool useList;
 
-    vector<string> pointLabels;
+    int num_images;
+    int num_points;
+
+    vector<string> imageFiles;
+    vector<string> imagePointFiles;
 
     Mat faceImage;
     vector<Point2f> facePoints;
@@ -49,4 +65,9 @@ public:
     Mat distortion_coefficients;
     Mat rvec;
     Mat tvec;
+
+    gsl_matrix *m_gsl_model;
+    gsl_matrix *m_gsl_images;
+    gsl_matrix *m_gsl_s;
+    gsl_matrix *m_gsl_final_result;
 };

@@ -101,3 +101,43 @@ void CVOpticalFlow::findFlow(Mat &vx, Mat &vy, Mat &warp, Mat &im1, Mat &im2, do
   memcpy(vy.data, ivy.pData, sizeof(double) * vy.rows * vy.cols);
   iwarp.toMat(warp);
 }
+
+
+void CVOpticalFlow::compositeFlow(Mat &ax, Mat &ay, Mat &bx, Mat &by, Mat &outx, Mat &outy) {
+  for (int i=0; i<ax.rows; i++) {
+    for (int j=0; j<ax.cols; j++) {
+      double flow_ax = ax.at<double>(i, j);
+      double flow_ay = ay.at<double>(i, j);
+
+      printf("i & j: %d %d ", i, j);
+      double new_flow_x = flow_ax + bilinearFlow(bx, i + flow_ax, j + flow_ay);
+      double new_flow_y = flow_ay + bilinearFlow(by, i + flow_ax, j + flow_ay);
+
+      outx.at<double>(i, j) = new_flow_x;
+      outy.at<double>(i, j) = new_flow_y;
+
+    }
+  }  
+}
+
+double CVOpticalFlow::bilinearFlow(Mat &im, double r, double c) {
+  int r0 = r, r1 = r+1;
+  int c0 = c, c1 = c+1;
+  clip(r0, 0, im.rows);
+  clip(r1, 0, im.rows);
+  clip(c0, 0, im.cols);
+  clip(c1, 0, im.cols);
+
+  printf("r=%f, c=%f [%d %d %d %d] ", r, c, r0, c0, r1, c1);
+
+  double tr = r - r0;
+  double tc = c - c0;
+  double ptr00 = im.at<double>(r0, c0);
+  double ptr01 = im.at<double>(r0, c1);
+  double ptr10 = im.at<double>(r1, c0);
+  double ptr11 = im.at<double>(r1, c1);
+  double out = ((1-tr) * (tc * ptr01 + (1-tc) * ptr00) + tr * (tc * ptr11 + (1-tc) * ptr10));
+  
+  printf("binlinear flow out: %f\n", out);
+  return out;
+}

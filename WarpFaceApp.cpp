@@ -26,6 +26,7 @@ void PrintUsage()
     printf("Usage:  \n" \
             "   \t--faceImage [image with of the face]\n" \
             "   \t--facePoints [text file with detected fiducial points]\n" \
+            "   \t--list [image file and point file on same line, separated by space, one line per image]\n" \
             "   \t--templateMesh [template 3D point cloud]\n" \
             "   \t--templatePoints [the 3d canonical points]\n" \
             "   \t--output [image to save warped face to]\n" \
@@ -42,10 +43,11 @@ void WarpFaceApp::processOptions(int argc, char **argv){
             {"help",        0, 0, 'h'},
             {"faceImage",       1, 0, 400},
             {"facePoints",      1, 0, 401},
-            {"templateMesh",        1, 0, 402},
+            {"templateMesh",    1, 0, 402},
             {"output",          1, 0, 403},
-            {"templatePoints",        1, 0, 404},
-            {"canonicalPoints",        1, 0, 405},
+            {"templatePoints",  1, 0, 404},
+            {"canonicalPoints", 1, 0, 405},
+            {"list",            1, 0, 406},
             {0,0,0,0} 
         };
 
@@ -86,6 +88,11 @@ void WarpFaceApp::processOptions(int argc, char **argv){
                 sprintf(canonicalPointsFile, "%s", optarg);
                 break;
 
+            case 406:
+                useList = true;
+                sprintf(listFile, "%s", optarg);
+                break;
+
             default: 
                 printf("Unrecognized option %d\n", c);
                 break;
@@ -95,7 +102,8 @@ void WarpFaceApp::processOptions(int argc, char **argv){
 
 void WarpFaceApp::init(){
     printf("[init] Running program %s\n", argv[0]);
-    
+    useList = false;
+
     if (argc < 2 ){
         PrintUsage();
         exit(0);
@@ -104,13 +112,53 @@ void WarpFaceApp::init(){
     processOptions(argc, argv);
 
     loadTemplateFiles();
-    loadFaceSpecificFiles();
 
-    getColorFromImage();
+    if (useList){
+        loadImageList();
+    }
+    else{
+        num_images = 1;
+        loadFaceSpecificFiles();
+    }
+
+
+    setupShapeStuff();
+    populateTemplateMatrix();
+    populateImageMatrix();
+    shapeStuff();
+
+    //getColorFromImage();
     //findTransformation();
     
     //makeNewFace();
    
+}
+
+void WarpFaceApp::loadImageList(){
+    printf("[loadImageList] loading from file %s\n", listFile);
+    FILE *file = fopen ( listFile, "r" );
+    if ( file != NULL ) {
+        char image_path[256];
+        char point_path[256];
+        while( fscanf(file, "%s %s\n", image_path, point_path) > 0 ) {
+            imageFiles.push_back(image_path);
+            imagePointFiles.push_back(point_path);
+        }
+        fclose (file);
+    }
+    else {
+        perror (facePointsFile);
+    }
+    printf("[loadImageList] found %d image filenames\n", (int)imageFiles.size());
+    num_images = (int)imageFiles.size();    
+}
+
+void WarpFaceApp::setupShapeStuff(){
+    printf(" --- num_images = %d and num_points = %d ---\n", num_images, num_points);
+
+    m_gsl_model = gsl_matrix_calloc(4, num_points);
+    m_gsl_images = gsl_matrix_calloc(num_points, num_images);
+    m_gsl_s = gsl_matrix_calloc(4, num_points);
 }
 
 void WarpFaceApp::loadFaceSpecificFiles(){
@@ -169,6 +217,7 @@ void WarpFaceApp::loadTemplateFiles(){
         perror (templateMeshFile);
     }
     printf("[loadTemplateFiles] yay, {{%d}} points loaded into templateMesh\n", (int)templateMesh.size());
+    num_points = (int)templateMesh.size();
 
 
     printf("[loadTemplateFiles] loading 3d canonical points corresponding to face mesh from file %s\n", templatePointsFile);
@@ -344,40 +393,244 @@ void WarpFaceApp::bilinear(double *out, Mat im, float c, float r){
     }
 }
 
-void WarpFaceApp::makeNewFace(){
-    printf("[makeNewFace]\n");
-    
-    vector<Point3f> mesh = templateMesh;
-
-    vector<Point2f> newPoints;
-    projectPoints(mesh, rvec, tvec, cameraMatrix, distortion_coefficients, newPoints);
-
-    printf("[makeNewFace] done projecting %d points\n", (int)mesh.size());
-    IplImage* new_face = cvCreateImage(cvSize(170, 220), IPL_DEPTH_8U, 3);
-    cvZero(new_face);
-    Mat new_face_mat = new_face;
-    Mat face_image_mat = faceImage;
-    for (int i = 0; i < mesh.size(); i++){
-        float new_x = mesh[i].x;
-        float new_y = mesh[i].y;
-        float photo_x = newPoints[i].x;
-        float photo_y =newPoints[i].y;
-        new_face_mat.at<Vec3b>(new_x, new_y) = face_image_mat.at<Vec3b>(photo_y, photo_x);
+void WarpFaceApp::populateTemplateMatrix(){
+    printf("[populateTemplateMatrix]");
+    for (int i = 0; i < num_points; i++){
+        Point3f c = templateColors[i];
+        float lum = (0.2126*c.x) + (0.7152*c.y) + (0.0722*c.z);
+        Point3f n = templateNormals[i];
+        gsl_matrix_set(m_gsl_model, 1, i, n.x);
+        gsl_matrix_set(m_gsl_model, 2, i, n.y);
+        gsl_matrix_set(m_gsl_model, 3, i, n.z);
     }
-    
-    Mat drawable = faceImage;
-    for (int i = 0; i < mesh.size(); i++){
-        circle(drawable, newPoints[i], 1, CV_RGB(0, 100, 255), 2, 8, 0);
-    }
-    imshow("projected face", drawable);
-    cvWaitKey(0);
-
-    imwrite(outFaceFile, new_face_mat);
-    //imshow("new face", new_face_mat);
-    //cvWaitKey(0);
-    
 }
 
+void WarpFaceApp::populateImageMatrix(){
+    printf("[populateImageMatrix]");
+    for (int i = 0; i < num_images; i++){
+        printf("[populateImageMatrix] image %d\n", i);
+        // load the image
+        Mat im = imread(imageFiles[i].c_str(), CV_LOAD_IMAGE_COLOR);
+        im.convertTo(im, CV_64FC3, 1.0/255, 0);
+
+        // load the points
+        const char *filename = imagePointFiles[i].c_str();
+        vector<Point2f> facePoints = loadPoints(filename);
+
+        // warp and stuff
+        fx = 4000;
+        cameraMatrix = Matx33f(fx, 0, 0, 0, fx, 0, 0, 0, 1);
+        vector<double> rv(3), tv(3);
+        distortion_coefficients = Mat(5,1,CV_64FC1);
+        rvec = Mat(3, 1, CV_64FC1);
+        tvec = Mat(3, 1,CV_64FC1); 
+
+        vector<Point2f> new_points;
+       
+        // transform between template and image front-of-face view
+        solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
+        cout << "cameraMatrix: " << cameraMatrix << endl;
+        cout << "rvec: " << rvec << endl;
+        cout << "tvec: " << tvec << endl;
+        cout << "distortion_coefficients: " << distortion_coefficients << endl;
+
+        // project onto image view
+        projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+        for (int j = 0; j < new_points.size(); j++){
+            double c[3];
+            bilinear(c, im, new_points[j].x, new_points[j].y);
+            float lum = (0.2126*c[2]) + (0.7152*c[1]) + (0.0722*c[0]);
+            gsl_matrix_set(m_gsl_images, j, i, lum);
+        }
+
+        for (int j = 0; j < templateMesh.size(); j++){
+            circle(im, new_points[j], 4, 1, 0, 8, 0);
+        }
+        //imshow("face projected back", im);
+        //waitKey(0);
+
+
+        // transform between template and canonical front-of-face view
+        solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+        projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+        Mat drawable = Mat::zeros(500, 500, CV_32F);
+        for (int j = 0; j < templateMesh.size(); j++){
+            float color = gsl_matrix_get(m_gsl_images, j, i);
+            circle(drawable, new_points[j], 4, color, 0, 8, 0);
+        }
+
+        //imshow("drawable", drawable);
+        //waitKey(0);
+
+    }
+
+    printf("[populateImageMatrix] DONE!\n");
+}
+
+vector<Point2f> WarpFaceApp::loadPoints(const char* filename){
+    printf("[loadPoints] loading points from %s\n", filename);
+    vector<Point2f> points;
+    FILE *file = fopen ( filename, "r" );
+    if ( file != NULL ) {
+        float x, y;
+        while( fscanf(file, "%f %f\n", &x, &y) > 0 ) {
+            points.push_back(Point2f(x,y));
+        }
+        fclose (file);
+    }
+    else {
+        perror (filename);
+    }
+
+    return points;
+}
+
+
+void WarpFaceApp::shapeStuff(){
+    printf("[shapeStuff]...\n");
+
+    // warp and stuff
+    fx = 4000;
+    cameraMatrix = Matx33f(fx, 0, 0, 0, fx, 0, 0, 0, 1);
+    vector<double> rv(3), tv(3);
+    distortion_coefficients = Mat(5,1,CV_64FC1);
+    rvec = Mat(3, 1, CV_64FC1);
+    tvec = Mat(3, 1,CV_64FC1); 
+
+    vector<Point2f> new_points;
+    // transform between template and canonical front-of-face view
+    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+
+    cout << "[shapeStuff] cameraMatrix: " << cameraMatrix << endl;
+    cout << "[shapeStuff] rvec: " << rvec << endl;
+    cout << "[shapeStuff] tvec: " << tvec << endl;
+    cout << "[shapeStuff] distortion_coefficients: " << distortion_coefficients << endl;
+
+    // project onto canonical view
+    projectPoints(templateMesh, rvec, tvec, cameraMatrix, distortion_coefficients, new_points);
+
+
+
+
+
+    // so ive got a fatty matrix... i want to get the mean of it and do SVD and stuff
+    gsl_vector *mean = gsl_vector_calloc(num_points);
+    for (int i = 0; i < num_images; i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
+        gsl_vector_add(mean, &col.vector);
+    }
+    gsl_vector_scale(mean, 1.0/num_images);
+    for (int i = 0; i < num_images; i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
+        gsl_vector_sub(&col.vector, mean);
+    }
+
+    gsl_vector *S = gsl_vector_calloc(num_images);
+    gsl_matrix *V = gsl_matrix_calloc(num_images, num_images);
+    gsl_vector *work = gsl_vector_calloc(num_images);
+
+    printf("[shapeStuff] computing SVD!\n");
+
+    int res = gsl_linalg_SV_decomp(m_gsl_images, V, S, work);
+
+    printf("[shapeStuff] SVD computed, result: %d\n", res);
+
+    gsl_matrix *m_gsl_rank4 = gsl_matrix_calloc(4, num_points);
+
+
+  
+    // try visualizing eigenfaces
+    for (int i = 0; i < 4; i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
+        gsl_vector_view vec_work = gsl_matrix_row(m_gsl_s, i);
+        gsl_vector_memcpy(&vec_work.vector, &col.vector);
+        gsl_vector_scale(&vec_work.vector, gsl_vector_get(S, i));
+
+        Mat drawable = Mat::zeros(500, 500, CV_32F);
+        for (int j = 0; j < new_points.size(); j++){
+            float color = gsl_vector_get(&vec_work.vector, j)*.3;
+            circle(drawable, new_points[j], 4, color, 0, 8, 0);
+        }
+        imshow("gmmmmm", drawable);
+        waitKey(0);
+    }
+
+    solveStuff();
+
+    // outputtt
+    for (int i = 0; i < 4; i++){
+        gsl_vector_view vec_work = gsl_matrix_row(m_gsl_final_result, i);
+
+        Mat drawable = Mat::zeros(500, 500, CV_32F);
+        for (int j = 0; j < new_points.size(); j++){
+            float color = gsl_vector_get(&vec_work.vector, j)*.2;
+            //printf("%f ", color);
+            circle(drawable, new_points[j], 2, color, 0, 8, 0);
+        }
+        imshow("yeaahhhh", drawable);
+        waitKey(0);
+    }
+}
+
+void WarpFaceApp::solveStuff(){
+    printf("[solveStuff] ... \n");
+    // copying some photocity matrix solving code
+    gsl_matrix* m_gsl_xy = m_gsl_s;
+    gsl_matrix* m_gsl_gps = m_gsl_model;
+    gsl_matrix* m_gsl_transform = gsl_matrix_alloc(4, 4);
+
+    printf("[solveStuff] ... 1 \n");
+  
+    // transform = gps * xy' * inv(xy * xy')
+    //A = gps * xy'
+    //B = xy *xy'
+    //C = A * inv(B)
+    
+    gsl_matrix *A = gsl_matrix_alloc(4,4);
+    gsl_matrix *B = gsl_matrix_alloc(4,4);
+
+    printf("[solveStuff] ... 2 \n");
+    
+    //A = gps * xy'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_gps, m_gsl_xy, 0.0, A);
+
+    printf("[solveStuff] ... 3 \n");
+    
+    //B = xy *xy'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_xy, m_gsl_xy, 0.0, B);
+
+    printf("[solveStuff] ... 4 \n");
+    
+    // invert B...
+    gsl_matrix *inv = gsl_matrix_alloc(4,4);
+    gsl_permutation *p = gsl_permutation_alloc (4);
+    int s; 
+    gsl_linalg_LU_decomp(B, p, &s);
+    gsl_linalg_LU_invert(B, p, inv);
+    
+    // multiply A * inv
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, A, inv, 0.0, m_gsl_transform);
+    
+    gsl_matrix_free(A);
+    gsl_matrix_free(B);
+    gsl_matrix_free(inv);
+    gsl_permutation_free(p);
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+            printf("%f ", gsl_matrix_get(m_gsl_transform, i, j));
+            //gsl_matrix_set(m_gsl_transform, i, j, gsl_matrix_get(m_gsl_transform, i, j)/w);
+        }
+        printf("\n");
+    }
+
+    m_gsl_final_result = gsl_matrix_alloc(4,num_points);    
+    //C = transform * xy
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, m_gsl_transform, m_gsl_xy, 0.0, m_gsl_final_result);
+
+}
 
 static WarpFaceApp *the_app = NULL;
 
