@@ -43,7 +43,7 @@ DEPENDENCY_FILES=\
 	$(patsubst %.o,%.d,$(ALL_OBJECTS)) 
 
 
-all: $(EIGENFACE) $(WARPFACE) $(FLOWFACE) $(DETECTFACE)
+all: $(DETECTFACE)
 
 
 %.o: %.cc Makefile.mac
