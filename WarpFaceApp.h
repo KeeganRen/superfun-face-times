@@ -17,7 +17,7 @@ public:
     void loadTemplateFiles();
     void loadFaceSpecificFiles();
     void getColorFromImage();
-    void findTransformation();
+    
 
     void setupShapeStuff();
     void populateTemplateMatrix();
@@ -25,10 +25,16 @@ public:
     void shapeStuff();
     void solveStuff();
 
+    void recoverDepth();
+
     void clip(int &a, int lo, int hi);
     void bilinear(double *out, Mat im, float c, float r);
 
     vector<Point2f> loadPoints(const char* filename);
+
+    void testIntegrability();
+    void testTemplate();
+    void testTemplateVsCanonical();
 
     int argc;
     char **argv;
@@ -41,6 +47,8 @@ public:
     char outFaceFile[1024];
     char listFile[1024];
     bool useList;
+
+    bool visualize;
 
     int num_images;
     int num_points;
