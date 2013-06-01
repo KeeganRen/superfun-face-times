@@ -21,6 +21,8 @@
 #include <gsl/gsl_blas.h>
 
 #include <Eigen/Sparse>
+#include <Eigen/Dense>
+using namespace Eigen;
 typedef Eigen::SparseMatrix<double> SpMat; // declares a column-major sparse matrix type of double
 typedef Eigen::Triplet<double> T;
 
@@ -141,12 +143,15 @@ void WarpFaceApp::init(){
 
     setupShapeStuff();
     populateTemplateMatrix();
-    populateImageMatrix();
+
 
     /* some tests */
     //testIntegrability();
     //testTemplate();
     //testTemplateVsCanonical();
+    
+    populateImageMatrix();
+
 
 
     //findTransformation();
@@ -337,17 +342,8 @@ void WarpFaceApp::loadTemplateFiles(){
     printf("[loadTemplateFiles] loading canonical face points file %s\n", canonicalPointsFile);
     FILE *file;
 
-    file = fopen ( canonicalPointsFile, "r" );
-    if ( file != NULL ) {
-        float x, y;
-        while( fscanf(file, "%f %f\n", &x, &y) > 0 ) {
-            canonicalPoints.push_back(Point2f(x,y));
-        }
-        fclose (file);
-    }
-    else {
-        perror (canonicalPointsFile);
-    }
+    canonicalPoints= loadPoints(canonicalPointsFile);
+
     printf("[loadTemplateFiles] sweet, {{%d}} canonical (2d) points loaded\n", (int)canonicalPoints.size());
 
     printf("[loadTemplateFiles] loading template face mesh from file %s\n", templateMeshFile);
@@ -541,16 +537,139 @@ void WarpFaceApp::populateImageMatrix(){
         vector<Point2f> facePoints = loadPoints(filename);
 
 
+        for (int j = 0; j < facePoints.size(); j++){
+            double c = .1+j*.1;
+            circle(im, facePoints[j], 4, CV_RGB(c, c, 0), 2, 8, 0);
+        }
+        imshow("image w pts", im);
+
+        /*
+        int n = 5;//(int)facePoints.size();
+        MatrixXd T(3,n); // T for template
+        MatrixXd F(2,n); // F for face image
+        // solving for 3x2 transform
+
+        for (int k = 0; k < n; k++){
+            T(0, k) = templatePoints[k].x;
+            T(1, k) = templatePoints[k].y;
+            T(2, k) = templatePoints[k].z;
+
+            F(0, k) = facePoints[k].x;
+            F(1, k) = 500-facePoints[k].y;
+        }
+
+
+        for (int k = 0; k < n; k++){
+            printf("%f %f %f\n", templatePoints[k].x, templatePoints[k].y, templatePoints[k].z) ;
+        }
+
+        for (int k = 0; k < n; k++){
+            printf("%f %f\n", facePoints[k].x, facePoints[k].y) ;
+        }
+
+        MatrixXd LHS = F*T.transpose();
+        MatrixXd RHS = T*T.transpose();
+        MatrixXd X = F*T.transpose() * RHS.inverse();
+
+        cout << "LHS" << endl << LHS << endl;
+        cout << "RHS" << endl << RHS << endl;
+
+        cout << "Here is the transformation matrix for image "<< i << ": " << endl << X << endl;
+
+        MatrixXd templateMeshEigen(3, num_points);
+        for (int k = 0; k < num_points; k++){
+            templateMeshEigen(0, k) = templateMesh[k].x;
+            templateMeshEigen(1, k) = templateMesh[k].y;
+            templateMeshEigen(2, k) = templateMesh[k].z;
+        }
+        MatrixXd transformedPoints = X*T;
+        MatrixXd transformedMeshPoints = X*templateMeshEigen;
+
+        cout << "done transforming" << endl;
+
         
-        printf("[populateImageMatrix] size of facePoints: %d, size of canonicalPoints: %d\n", facePoints.size(), canonicalPoints.size());
+        Mat drawable = Mat::zeros(500, 500, im.type() );
+
+        for (int j = 0; j < templateMesh.size(); j++){
+            Vec3d c = im.at<Vec3d>(500-transformedMeshPoints(1, j), transformedMeshPoints(0, j));
+            float lum = (0.2126*c[2]) + (0.7152*c[1]) + (0.0722*c[0]);
+            circle(drawable, Point2f(templateMesh[j].x, 500 - templateMesh[j].y), 2, CV_RGB(lum, lum, lum), 2, 8, 0);
+        }
+
+        imshow("drawable", drawable);
+        
+
+        for (int j = 0; j < num_points; j++){
+            double c = .5;
+            circle(im, Point2f(transformedMeshPoints(0, j), 500-transformedMeshPoints(1, j)), 1, CV_RGB(c, c, c), 0, 8, 0);
+        }
+
+        
+        
+        for (int j = 0; j < n; j++){
+            double c = .1+j*.1;
+            circle(im, facePoints[j], 4, CV_RGB(c, c, 0), 2, 8, 0);
+            circle(im, Point2f(transformedPoints(0, j), transformedPoints(1, j)), 4, CV_RGB(0, 0, c), 5, 8, 0);
+        }
 
 
-        Mat transform = estimateRigidTransform(facePoints, canonicalPoints, true);
+        imshow("image with transformed pts on it", im);
 
+
+        */
+
+        vector<Point2f> templatePoints2d;
+        for (int j = 0; j < templatePoints.size(); j++){
+            if (j == 0 || j == 1 || j == 6 || j == 7 || j == 4){
+                templatePoints2d.push_back(Point2f(templatePoints[j].x, templatePoints[j].y));   
+            }
+        }
+
+
+        Mat drawable = Mat::zeros(192, 139, CV_8U);
+        for (int j = 0; j < templateMesh.size(); j++){
+            //Vec3d c = warped.at<Vec3d>(500-templateMesh[j].y, templateMesh[j].x);
+            float lum = 255;//(0.2126*c[2]) + (0.7152*c[1]) + (0.0722*c[0]);
+            cout << templateMesh[j] << endl;
+            circle(drawable, Point2f(templateMesh[j].x, templateMesh[j].y), 1, CV_RGB(lum, lum, lum), 1, 8, 0);
+        }
+
+
+        for (int j = 0; j < facePoints.size(); j++){
+            double c = 1;
+            //circle(drawable, templatePoints2d[j], 4, CV_RGB(c, c, c), 4, 8, 0);
+        }
+
+        //circle(drawable, Point2f(200, 200), 2, CV_RGB(255, 5, 34), 2, 8, 0);
+
+        imwrite("model/igormask.png", drawable);
+
+        imshow("drawable", drawable);
+        waitKey(0);
+
+        printf("sizes... canonical pts: %d, templatePoints2d: %d, facePoints :%d\n", canonicalPoints.size(), templatePoints2d.size(), facePoints.size());
+
+        
+        Mat transform = estimateRigidTransform(facePoints, canonicalPoints, false);
+
+        cout << "estimate rigid transform: " << endl << transform << endl;
+
+        cout << transform << endl;
+
+        
         Mat warped = Mat::zeros(500, 500, im.type() );
         warpAffine(im, warped, transform, warped.size() );
 
 
+
+        transform = estimateRigidTransform(canonicalPoints, templatePoints2d, false);
+        warpAffine(warped, warped, transform, warped.size() );
+
+
+        //flip(warped, warped, 0);
+        imshow("warped", warped);
+
+        /*
         for (int j = 0; j < templateMesh.size(); j++){
             Vec3d c = warped.at<Vec3d>(templateMesh[j].y, templateMesh[j].x);
             float lum = (0.2126*c[2]) + (0.7152*c[1]) + (0.0722*c[0]);
@@ -565,12 +684,17 @@ void WarpFaceApp::populateImageMatrix(){
                 circle(drawable, Point2f(templateMesh[j].x,500-templateMesh[j].y), 1, CV_RGB(c, c, c), 0, 8, 0);
             }
 
-            //imshow("drawable", drawable);
-            //waitKey(0);
+            imshow("drawable", drawable);
+            waitKey(0);
         }
+        */
+    
+        waitKey(0);
 
 
     }
+
+    waitKey(0);
 
     printf("[populateImageMatrix] DONE!\n");
 }
@@ -590,7 +714,14 @@ vector<Point2f> WarpFaceApp::loadPoints(const char* filename){
         perror (filename);
     }
 
-    return points;
+    vector<Point2f> pruned_points;
+    for (int i = 0; i < points.size(); i++){
+        if (i == 0 || i == 1 || i == 6 || i == 7 || i == 4){
+            pruned_points.push_back(points[i]);
+        }
+    }
+
+    return pruned_points;
 }
 
 
