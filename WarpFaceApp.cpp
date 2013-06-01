@@ -218,9 +218,9 @@ void WarpFaceApp::testTemplateVsCanonical(){
     vector<Point2f> new_points;
    
     // transform between template and canonical front-of-face view
-    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_ITERATIVE);
+    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false);
 
-    cout << "cameraMatrix: " << cameraMatrix << endl;
+    //cout << "cameraMatrix: " << cameraMatrix << endl;
     cout << "rvec: " << rvec << endl;
     cout << "tvec: " << tvec << endl;
     cout << "distortion_coefficients: " << distortion_coefficients << endl;
@@ -402,9 +402,9 @@ void WarpFaceApp::getColorFromImage(){
     vector<Point2f> new_points;
    
     // transform between template and canonical front-of-face view
-    solvePnP(templatePoints, facePoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_EPNP);
+    solvePnP(templatePoints, facePoints, cameraMatrix, distortion_coefficients, rvec, tvec, false);
 
-    cout << "cameraMatrix: " << cameraMatrix << endl;
+    //cout << "cameraMatrix: " << cameraMatrix << endl;
     cout << "rvec: " << rvec << endl;
     cout << "tvec: " << tvec << endl;
     cout << "distortion_coefficients: " << distortion_coefficients << endl;
@@ -422,9 +422,9 @@ void WarpFaceApp::getColorFromImage(){
     }
 
     // transform between template and canonical front-of-face view
-    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false, CV_EPNP);
+    solvePnP(templatePoints, canonicalPoints, cameraMatrix, distortion_coefficients, rvec, tvec, false);
 
-    cout << "cameraMatrix: " << cameraMatrix << endl;
+    //cout << "cameraMatrix: " << cameraMatrix << endl;
     cout << "rvec: " << rvec << endl;
     cout << "tvec: " << tvec << endl;
     cout << "distortion_coefficients: " << distortion_coefficients << endl;
