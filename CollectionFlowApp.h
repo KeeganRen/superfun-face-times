@@ -17,7 +17,6 @@ public:
     void findImageSizeFromFirstImage();
     void openImages();
     void convertImages();
-    void putInGslMatrix();
     void buildMatrixAndRunPca();
     void saveAs(char* filename, Mat m);
     

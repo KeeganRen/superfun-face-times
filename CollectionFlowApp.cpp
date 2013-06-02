@@ -97,7 +97,6 @@ void CollectionFlowApp::init(){
         convertImages();
     }
 
-    //putInGslMatrix();
     buildMatrixAndRunPca();
     //outputSomeStuff(); 
 }
@@ -163,57 +162,6 @@ void CollectionFlowApp::convertImages(){
     }
 }
 
-void CollectionFlowApp::putInGslMatrix(){
-    printf("[putInGslMatrix] image size: %dx%dx%d\n", w, h, d);
-
-    Mat im = faceImages[0];
-    int num_pixels = w*h*d;
-    gsl_vector *m_gsl_vec = gsl_vector_calloc(num_pixels);
-
-    matToGslVec(im, m_gsl_vec);
-
-    /*
-    for (int i = 0; i < w; i++){
-        for (int j = 0; j < h; j++){
-            if (d == 1){
-                int idx = i*h + j;
-                double val = im.at<double>(i, j);
-                gsl_vector_set(m_gsl_vec, idx, val);
-            }
-            else if (d == 3){
-                int idx = i*h + j;
-                Vec3d val = im.at<Vec3d>(i, j);
-                for (int k = 0; k < 3; k++){
-                    gsl_vector_set(m_gsl_vec, idx*3 + k, val[k]);
-                }
-            }
-        }
-    }
-    */
-
-    printf("[putInGslMatrix] got that raw data into the gsl matrix\n");
-
-    for (int i = 0; i < 100; i++){
-        printf("%f ", i, gsl_vector_get(m_gsl_vec, i));
-    }
-
-    printf("[putInGslMatrix] putting it back in\n");
-
-    /*
-    if (d == 1){
-        Mat m(w, h, CV_64F, m_gsl_vec->data);
-        imshow("redone mat", m);
-        waitKey(0);
-    }
-    if (d == 3){
-        Mat m(w, h, CV_64FC3, m_gsl_vec->data);
-        imshow("redone mat", m);
-        waitKey(0);
-    }
-    */
-    imshow("redone mat", im);
-    waitKey(0);
-}
 
 void CollectionFlowApp::gslVecToMat(gsl_vector *orig, Mat &im){
     gsl_vector* vec = gsl_vector_calloc(orig->size);
@@ -314,7 +262,8 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, 1);
             Mat face;
             gslVecToMat(&(col.vector), face);
-            imshow("face with mean subtracted", face);
+            if (visualize)
+                imshow("face with mean subtracted", face);
         }
 
         gsl_vector *S = gsl_vector_calloc(num_images);
@@ -415,8 +364,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             Mat vx, vy, warp;
             
             CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-            imshow("the warped picture", warp);
-            imshow("flow", CVOpticalFlow::showFlow(vx, vy));
+            if (visualize){
+                imshow("the warped picture", warp);
+                imshow("flow", CVOpticalFlow::showFlow(vx, vy));
+            }
 
 
             Mat warped;
