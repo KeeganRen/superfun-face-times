@@ -91,6 +91,7 @@ void CollectionFlowApp::init(){
     processOptions(argc, argv);
     
     loadFacesFromList();
+
     findImageSizeFromFirstImage();
     openImages();
     if (gray){
@@ -98,7 +99,6 @@ void CollectionFlowApp::init(){
     }
 
     buildMatrixAndRunPca();
-    //outputSomeStuff(); 
 }
 
 void CollectionFlowApp::loadFacesFromList(){
@@ -115,6 +115,15 @@ void CollectionFlowApp::loadFacesFromList(){
     else {
         perror (inputFile);
     }
+}
+
+const char* CollectionFlowApp::faceFileName(int i){
+    string filename = faceList[i];
+    int idx1 = filename.rfind("/");
+    //int idx2 = filename.find(".jpg");
+    int idx2 = filename.rfind("_"); // pretty specific to this app.. looking for the faceid #
+    string sub = filename.substr(idx1+1, idx2-idx1-1);
+    return sub.c_str();
 }
 
 void CollectionFlowApp::findImageSizeFromFirstImage(){
@@ -206,6 +215,13 @@ void CollectionFlowApp::saveAs(char* filename, Mat m){
     imwrite(filename, rightFormat);
 }
 
+void CollectionFlowApp::saveBinaryEigenface(char* filename, gsl_vector *face){
+    printf("[saveBinaryEigenface] saving binary file of eigenface to file: %s\n", filename);
+    FILE *file = fopen(filename, "wb");
+    gsl_vector_fwrite(file, face);
+    fclose(file);
+}
+
 void CollectionFlowApp::buildMatrixAndRunPca(){
     printf("[buildMatrixAndRunPca] Let's do it! Image size: %d x %d\n", w, h);
     int num_pixels = w*h*d;
@@ -244,7 +260,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             imshow("mean image", m);
         }
         char filename[100];
-        sprintf(filename, "%s/mean-rank%d.jpg", outputDir, k);
+        sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
         saveAs(filename, m);
 
         // copy m_gsl_mat into m_gsl_mat_k so we can do SVD
@@ -295,8 +311,12 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             }
 
             char filename[100];
-            sprintf(filename, "%s/rank%d-eigen%02d.jpg", outputDir, k, i);
+            sprintf(filename, "%s/eigen%02d.jpg", outputDir, i);
             saveAs(filename, eigenface);
+
+            char filenameBin[100];
+            sprintf(filenameBin, "%s/eigen%02d.bin", outputDir, i);
+            saveBinaryEigenface(filenameBin, vec_work);
             
         }
         
@@ -345,11 +365,15 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             }
 
 
-            char filename[100];
-            sprintf(filename, "%s/rank%d-face%02d-orig.jpg", outputDir, k, i);
-            saveAs(filename, m_highrank);
-            sprintf(filename, "%s/rank%d-face%02d-low.jpg", outputDir, k, i);
-            saveAs(filename, m_lowrank);
+            char filename1[100], filename2[100], filename3[100];
+            const char *faceStr = faceFileName(k);
+            printf("face filename: %s\n", faceStr);
+            sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
+            sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
+            sprintf(filename3, "%s/%s-warped.jpg", outputDir, faceStr);
+
+            //saveAs(filename1, m_highrank);
+            saveAs(filename2, m_lowrank);
 
             
             printf("[computeFlow] image %d/%d\n", i, num_images);
@@ -382,32 +406,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
             matToGslVec(m_highrank, &col_high.vector);
 
-            sprintf(filename, "%s/rank%d-face%02d-warped.jpg", outputDir, k, i);
-            saveAs(filename, m_highrank);
-            
 
-
-            /*
-            // TODO: HOW TO COPY 2 PIX INTO ONE?
-            Mat pair = Mat::zeros(w*2, h, faceImages[0].type());
-            Mat high = pair(Rect(0, 0, w, h));
-            Mat low = pair(Rect(w-1, 0, w, h));
-
-
-            Mat m = pair;
-
-            char filename[100];
-            sprintf(filename, "%s/rank%d-face%02d.jpg", outputDir, k, i);
-            saveAs(filename, m);
-
-            if (visualize){
-                imshow("low rank", m);
-                cvWaitKey(0);
-            }
-            */
+            saveAs(filename3, m_highrank);
             
         }
-        
     }
 }
 

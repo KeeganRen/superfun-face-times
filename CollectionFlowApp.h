@@ -19,9 +19,12 @@ public:
     void convertImages();
     void buildMatrixAndRunPca();
     void saveAs(char* filename, Mat m);
+    void saveBinaryEigenface(char* filename, gsl_vector *f);
     
     void gslVecToMat(gsl_vector *vec, Mat &m);
     void matToGslVec(Mat &m, gsl_vector *vec);
+
+    const char* faceFileName(int i);
 
     int argc;
     char **argv;
