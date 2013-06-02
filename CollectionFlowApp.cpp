@@ -366,7 +366,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
 
             char filename1[100], filename2[100], filename3[100];
-            const char *faceStr = faceFileName(k);
+            const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
             sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
             sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
