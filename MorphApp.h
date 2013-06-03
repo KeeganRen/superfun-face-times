@@ -21,5 +21,7 @@ public:
     char *c_file;
     char *d_file;
 
+    char *out_file;
+
     Mat a, b, c, d;
 };
