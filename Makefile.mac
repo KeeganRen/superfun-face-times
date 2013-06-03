@@ -12,6 +12,9 @@ LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -l
 COLLECTIONFLOWFACE=collectionFlow
 COLLECTIONFLOWSOURCES=CollectionFlowApp.cpp
 
+INCCFLOW=incrementalCFlow
+INCCFLOWSOURCES=IncrementalCFlowApp.cpp
+
 WARPFACE=warpFace
 WARPSOURCES=WarpFaceApp.cpp
 
@@ -32,6 +35,9 @@ clean:
 	    
 $(COLLECTIONFLOWFACE): $(COLLECTIONFLOWSOURCES)  $(FLOWOBJECTS) 
 	$(CC) $(FLOWFLAGS) $(INCDIR) $(LIBDIR) $(COLLECTIONFLOWSOURCES) $(FLOWOBJECTS)  -o $@ $(LIBS)
+
+$(INCCFLOW): $(INCCFLOWSOURCES)  $(FLOWOBJECTS) 
+	$(CC) $(FLOWFLAGS) $(INCDIR) $(LIBDIR) $(INCCFLOWSOURCES) $(FLOWOBJECTS)  -o $@ $(LIBS)
 
 $(WARPFACE): $(WARPSOURCES) 
 	$(CC) $(INCDIR) $(LIBDIR) $(WARPSOURCES) -o $@ $(LIBS)
