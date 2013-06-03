@@ -506,7 +506,7 @@ void Shape3DApp::recoverDepth(){
     vector<double> b_vec;
 
     // make a reverse lookup map for finding what index a point (x,y) is... 
-    Mat lookup = Mat(500, 500, CV_32S);
+    Mat lookup = Mat(300, 300, CV_32S, Scalar(0));
     for (int i = 0; i < templateMesh.size(); i++){
         Point3f p = templateMesh[i];
         lookup.at<int>(p.x, p.y) = i;
@@ -528,18 +528,19 @@ void Shape3DApp::recoverDepth(){
         int xy = lookup.at<int>(p.x, p.y);
         int xy1 = lookup.at<int>(p.x, p.y+1);
 
-        //printf("x:%3f, \ty: %3f, \tx1y: %d, \txy: %d, \txy1: %d, \tm: %d\n", p.x, p.y, x1y, xy, xy1, m);
 
-        // pixel constraint 1
-        b_vec.push_back(-1.0*nx);
-        coefficients.push_back(T(coef_count, x1y, nz));
-        coefficients.push_back(T(coef_count, xy, -nz));
-        coef_count++;
+        if (xy1 > -1 && xy > -1 && x1y > -1){
+            // pixel constraint 1
+            b_vec.push_back(-1.0*nx);
+            coefficients.push_back(T(coef_count, x1y, nz));
+            coefficients.push_back(T(coef_count, xy, -nz));
+            coef_count++;
 
-        b_vec.push_back(-1.0*ny);
-        coefficients.push_back(T(coef_count, xy1, nz));
-        coefficients.push_back(T(coef_count, xy, -nz));
-        coef_count++;
+            b_vec.push_back(-1.0*ny);
+            coefficients.push_back(T(coef_count, xy1, nz));
+            coefficients.push_back(T(coef_count, xy, -nz));
+            coef_count++;
+        }
 
 
     }
@@ -548,9 +549,10 @@ void Shape3DApp::recoverDepth(){
     printf("coef count: %d, c: %d, m: %d\n", coef_count, c, m);
     SpMat A(c,m); 
     Eigen::VectorXd b(c); 
-    printf("done inittig stuff\n");
+    printf("done initing stuff\n");
 
     A.setFromTriplets(coefficients.begin(), coefficients.end());
+    printf("done setting from triplets\n");
     SpMat M(c,c);
     M = A.transpose()*A;
 
@@ -572,6 +574,8 @@ void Shape3DApp::recoverDepth(){
     printf("Solved.\n");
 
     FILE *f = fopen(outFaceFile, "w");
+
+    /*
     fprintf(f,"ply\n");
     fprintf(f,"format ascii 1.0\n");
     fprintf(f,"comment VCGLIB generated\n");
@@ -593,6 +597,61 @@ void Shape3DApp::recoverDepth(){
     }
 
     fclose(f);
+    */
+
+    
+    fprintf(f, "{\n");
+    fprintf(f, "\"metadata\": { \"formatVersion\" : 3 },\n");
+    fprintf(f, "\"scale\" : 5,\n");
+    fprintf(f, "\"materials\": [],\n");
+    fprintf(f, "\"vertices\": [");
+    
+    //print vertices!
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f p = templateMesh[i];
+        fprintf(f, "%f,%f,%f", p.x-65, 100-p.y, x(i));
+        if (i < templateMesh.size()-1){
+            fprintf(f,",");
+        }
+    }
+
+    fprintf(f, "],\n");
+    fprintf(f, "\"morphTargets\": [],\n");
+    fprintf(f, "\"normals\": [],\n");
+    fprintf(f, "\"colors\": [],\n");
+    fprintf(f, "\"uvs\": [[]],\n");
+    fprintf(f, "\"faces\": [");
+    
+    bool printedSomethingYet = false;
+    // print faces!
+    for (int i = 0; i < templateMesh.size(); i++){
+        Point3f p = templateMesh[i];
+        int x = p.x;
+        int y = p.y;
+
+        int x1y = lookup.at<int>(p.x+1, p.y);
+        int x1y1 = lookup.at<int>(p.x+1, p.y+1);
+        int xy1 = lookup.at<int>(p.x, p.y+1);
+
+        if (x1y != 0 && x1y1 != 0 && xy1 != 0){
+            // make a quad
+            if (printedSomethingYet){
+                fprintf(f,",");
+            }
+            else {
+                printedSomethingYet = true;
+            }
+            fprintf(f,"1,%d,%d,%d,%d", i, xy1, x1y1, x1y);
+        }
+    }
+
+    fprintf(f, "],\n");
+    fprintf(f, "\"edges\" : []\n");
+    fprintf(f, "}\n");
+
+    fclose(f);
+    
+
 }
 
 static Shape3DApp *the_app = NULL;
