@@ -263,6 +263,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
         sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
         saveAs(filename, m);
 
+        char generalMeanFilename[100];
+        sprintf(generalMeanFilename, "%s/clustermean.jpg", outputDir);
+        saveAs(generalMeanFilename, m);
+
         // copy m_gsl_mat into m_gsl_mat_k so we can do SVD
         gsl_matrix_memcpy(m_gsl_mat_k, m_gsl_mat);
         

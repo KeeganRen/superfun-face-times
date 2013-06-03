@@ -27,6 +27,7 @@ void PrintUsage()
             "   \t--oldAvgFace <file> [existing average face]\n" \
             "   \t--numFaces <number>\n" \
             "   \t--eigenfaces <file> [list of paths to eigenfaces to use]\n" \
+            "   \t--output <path> path to save new files to\n" \
             "   \t--visualize [visualize progress]\n" \
             "\n");
 }
@@ -40,6 +41,7 @@ void IncrementalCFlowApp::processOptions(int argc, char **argv){
             {"visualize",   0, 0, 402},
             {"eigenfaces",  1, 0, 403},
             {"numFaces",    1, 0, 404},
+            {"output",      1, 0, 405},
             {0,0,0,0} 
         };
 
@@ -75,6 +77,10 @@ void IncrementalCFlowApp::processOptions(int argc, char **argv){
             case 404:
                 numFaces = atoi(optarg);
                 printf("num faces: %d\n", numFaces);
+                break;
+
+            case 405:
+                sprintf(outputDir, "%s", optarg);
                 break;
 
             default: 
@@ -224,6 +230,12 @@ void IncrementalCFlowApp::warpNewFace(){
     Mat m_lowrank, m_highrank;
     gslVecToMat(m_gsl_projectednewface, m_lowrank);
     m_highrank = newFace;
+
+    // save low rank picture
+    const char *faceStr = faceFileName(newFaceFile);
+    char filename[100];
+    sprintf(filename, "%s/%s-low.jpg", outputDir, faceStr);
+    saveAs(filename, m_lowrank);
     
     CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
 
@@ -233,6 +245,12 @@ void IncrementalCFlowApp::warpNewFace(){
         imshow("the warped picture", warped);
         imshow("flow", CVOpticalFlow::showFlow(vx, vy));
     }
+
+    // save warped picture
+    const char *faceStr2 = faceFileName(newFaceFile);
+    char filename2[100];
+    sprintf(filename2, "%s/%s-warped.jpg", outputDir, faceStr2);
+    saveAs(filename2, warped);
 }
 
 void IncrementalCFlowApp::makeNewAvg(){
@@ -251,6 +269,11 @@ void IncrementalCFlowApp::makeNewAvg(){
     if (visualize){
         imshow("NEW average", newAvg);
     }
+
+    // save new average
+    char generalMeanFilename[100];
+    sprintf(generalMeanFilename, "%s/clustermean.jpg", outputDir);
+    saveAs(generalMeanFilename, newAvg);
 }
 
 const char* IncrementalCFlowApp::faceFileName(char* f){
