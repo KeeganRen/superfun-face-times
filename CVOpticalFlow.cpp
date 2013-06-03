@@ -109,7 +109,6 @@ void CVOpticalFlow::compositeFlow(Mat &ax, Mat &ay, Mat &bx, Mat &by, Mat &outx,
       double flow_ax = ax.at<double>(i, j);
       double flow_ay = ay.at<double>(i, j);
 
-      printf("i & j: %d %d ", i, j);
       double new_flow_x = flow_ax + bilinearFlow(bx, i + flow_ax, j + flow_ay);
       double new_flow_y = flow_ay + bilinearFlow(by, i + flow_ax, j + flow_ay);
 
@@ -128,7 +127,6 @@ double CVOpticalFlow::bilinearFlow(Mat &im, double r, double c) {
   clip(c0, 0, im.cols);
   clip(c1, 0, im.cols);
 
-  printf("r=%f, c=%f [%d %d %d %d] ", r, c, r0, c0, r1, c1);
 
   double tr = r - r0;
   double tc = c - c0;
@@ -138,6 +136,5 @@ double CVOpticalFlow::bilinearFlow(Mat &im, double r, double c) {
   double ptr11 = im.at<double>(r1, c1);
   double out = ((1-tr) * (tc * ptr01 + (1-tc) * ptr00) + tr * (tc * ptr11 + (1-tc) * ptr10));
   
-  printf("binlinear flow out: %f\n", out);
   return out;
 }

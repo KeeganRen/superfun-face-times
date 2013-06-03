@@ -26,7 +26,7 @@ void PrintUsage()
 {
     printf("Usage:  \n" \
             "   \tto morph from image a to b via intermediate neutral expression...\n" \
-            "   \t<image 1> <low rank 1> <low rank 2> <image 2>\n" \
+            "   \t<image 1> <low rank 1> <low rank 2> <image 2> <output-pattern>\n" \
             "\n");
 }
 
@@ -42,6 +42,7 @@ void MorphApp::init(){
     b_file = argv[2];
     c_file = argv[3];
     d_file = argv[4];
+    out_file = argv[5];
 
     loadFaceImages();
     computeFlow();
@@ -70,45 +71,53 @@ void MorphApp::computeFlow(){
     int nOuterFPIterations = 4;
     int nInnerFPIterations = 1;
     int nSORIterations = 40;
-    
-    imshow("a", a);
-    imshow("b", b);
-    imshow("c", c);
-    imshow("d", d);
+
+    bool visualize = false;
+
+    if (visualize) { 
+        imshow("a", a);
+        imshow("b", b);
+        imshow("c", c);
+        imshow("d", d);
+    }
 
     Mat vx_ab, vy_ab, warp_ab;
     
     CVOpticalFlow::findFlow(vx_ab, vy_ab, warp_ab, a, b, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-    imshow("warp_ab", warp_ab);
-    imshow("flow_ab", CVOpticalFlow::showFlow(vx_ab, vy_ab));
+    if (visualize) imshow("warp_ab", warp_ab);
+    if (visualize) imshow("flow_ab", CVOpticalFlow::showFlow(vx_ab, vy_ab));
 
 
     Mat vx_cd, vy_cd, warp_cd;
     
     CVOpticalFlow::findFlow(vx_cd, vy_cd, warp_cd, c, d, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-    imshow("warp_cd", warp_cd);
-    imshow("flow_cd", CVOpticalFlow::showFlow(vx_cd, vy_cd));
+    if (visualize) imshow("warp_cd", warp_cd);
+    if (visualize) imshow("flow_cd", CVOpticalFlow::showFlow(vx_cd, vy_cd));
 
 
     Mat out_x = Mat(vx_ab.size(), CV_64F);
     Mat out_y = Mat(vy_ab.size(), CV_64F);
     CVOpticalFlow::compositeFlow(vx_ab, vy_ab, vx_cd, vy_cd, out_x, out_y);
 
-    imshow("flow_out", CVOpticalFlow::showFlow(out_x, out_y));
+    if (visualize) imshow("flow_out", CVOpticalFlow::showFlow(out_x, out_y));
 
     Mat vx_ad, vy_ad, warp_ad;
     
+    /*
     CVOpticalFlow::findFlow(vx_ad, vy_ad, warp_ad, a, d, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-    imshow("warp_ad", warp_ad);
-    imshow("flow_ad", CVOpticalFlow::showFlow(vx_ad, vy_ad));
-    waitKey(0);
-    
+    if (visualize) {
+        imshow("warp_ad", warp_ad);
+        imshow("flow_ad", CVOpticalFlow::showFlow(vx_ad, vy_ad));
+        waitKey(0);
+    }
+    */
+
     Mat morph(a);
     //ImageProcessing::warpImage(morph, im1, im2, vx, vy, im1.rows, im1.cols, 3);
-    for (float dt = 0; dt <= 1.1; dt += .05){
+    for (float dt = 0; dt <= 1.1; dt += .1){
         CVOpticalFlow::warpInterpolation(morph, a, d, out_x, out_y, dt);
-        imshow("morph", morph);
-        saveAsF("morph_final", dt, morph);
+        if (visualize) imshow("morph", morph);
+        saveAsF(out_file, dt, morph);
 
         /*
         CVOpticalFlow::warpInterpolation(morph, a, b, vx_ab, vy_ab, dt);
@@ -118,11 +127,11 @@ void MorphApp::computeFlow(){
         CVOpticalFlow::warpInterpolation(morph, c, d, vx_cd, vy_cd, dt);
         imshow("morph_cd", morph);
         saveAsF("morph_cd", dt, morph);
-        */
 
         CVOpticalFlow::warpInterpolation(morph, a, d, vx_ad, vy_ad, dt);
-        imshow("morph_ad", morph);
+        if (visualize) imshow("morph_ad", morph);
         saveAsF("morph_ad", dt, morph);
+        */
     }
     
 }
