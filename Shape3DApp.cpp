@@ -577,6 +577,13 @@ void Shape3DApp::recoverDepth(){
      // Solving:
     Eigen::SimplicialCholesky<SpMat> chol(M); // performs a Cholesky factorization of A
     Eigen::VectorXd x = chol.solve(b2); // use the factorization to solve for the given right hand side
+
+    double min_depth = x.minCoeff();
+    for (int i = 0; i < x.size(); i++){
+        x(i) = x(i) - min_depth;
+    }
+
+
     x = Scaling(2.0)*x;
 
     printf("Solved.\n");
