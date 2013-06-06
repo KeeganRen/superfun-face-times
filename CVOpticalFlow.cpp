@@ -54,6 +54,24 @@ void CVOpticalFlow::bilinear(double *out, Mat &im, double r, double c, int chann
   }
 }
 
+void CVOpticalFlow::bilinearGray(double *out, Mat &im, double r, double c, int channels) {
+  int r0 = r, r1 = r+1;
+  int c0 = c, c1 = c+1;
+  clip(r0, 0, im.rows);
+  clip(r1, 0, im.rows);
+  clip(c0, 0, im.cols);
+  clip(c1, 0, im.cols);
+
+  double tr = r - r0;
+  double tc = c - c0;
+  double ptr00 = im.at<double>(r0, c0);
+  double ptr01 = im.at<double>(r0, c1);
+  double ptr10 = im.at<double>(r1, c0);
+  double ptr11 = im.at<double>(r1, c1);
+  out[0] = ((1-tr) * (tc * ptr01 + (1-tc) * ptr00) + tr * (tc * ptr11 + (1-tc) * ptr10));
+  
+}
+
 void CVOpticalFlow::warp(Mat &out, Mat &im, Mat &vx, Mat &vy) {
   if(im.type()!=CV_64FC3) {
     printf("Error: unsupported typed. Required CV_64FC3");
@@ -62,10 +80,23 @@ void CVOpticalFlow::warp(Mat &out, Mat &im, Mat &vx, Mat &vy) {
   out = Mat(im.size(), CV_64FC3);
   for (int i=0; i<out.rows; i++) {
     for (int j=0; j<out.cols; j++) {
-      bilinear(&out.at<Vec3d>(i, j)[0], im, i+vy.at<double>(i, j), j+vx.at<double>(i, j), 3);
+      bilinearGray(&out.at<Vec3d>(i, j)[0], im, i+vy.at<double>(i, j), j+vx.at<double>(i, j), 3);
     }
   }
+}
 
+void CVOpticalFlow::warpGray(Mat &out, Mat &im, Mat &vx, Mat &vy) {
+  printf("warp gray!\n");
+  if(im.type()!=CV_64F) {
+    printf("Error: unsupported typed. Required CV_64F");
+    return ;
+  }
+  out = Mat(im.size(), CV_64F);
+  for (int i=0; i<out.rows; i++) {
+    for (int j=0; j<out.cols; j++) {
+      bilinearGray(&out.at<double>(i, j), im, i+vy.at<double>(i, j), j+vx.at<double>(i, j), 1);
+    }
+  }
 }
 
 void CVOpticalFlow::warpInterpolation(Mat &out, Mat &im1, Mat &im2, Mat &vx, Mat &vy, float dt) {
@@ -86,7 +117,26 @@ void CVOpticalFlow::warpInterpolation(Mat &out, Mat &im1, Mat &im2, Mat &vx, Mat
       }
     }
   }
+}
 
+void CVOpticalFlow::warpInterpolationGray(Mat &out, Mat &im1, Mat &im2, Mat &vx, Mat &vy, float dt) {
+  if(im1.type()!=CV_64F) {
+    printf("Error: unsupported typed. Required CV_64F");
+    return ;
+  }
+  printf("warp interpolation, dt: %f\n", dt);
+
+  out = Mat(im1.size(), CV_64F);
+  for (int i=0; i<out.rows; i++) {
+    for (int j=0; j<out.cols; j++) {
+      double a, b;
+      bilinearGray(&a, im2, i+(dt)*vy.at<double>(i, j), j+(dt)*vx.at<double>(i, j), 1);
+      bilinearGray(&b, im1, i+(dt-1)*vy.at<double>(i, j), j+(dt-1)*vx.at<double>(i, j), 1);
+ 
+        out.at<Vec3d>(i, j) = (1-dt)*a + (dt)*b;
+      
+    }
+  }
 }
 
 void CVOpticalFlow::findFlow(Mat &vx, Mat &vy, Mat &warp, Mat &im1, Mat &im2, double alpha, double ratio, int minWidth, int nOuterFPIterations, int nInnerFPIterations, int nSORIterations) {

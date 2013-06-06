@@ -95,7 +95,7 @@ void CollectionFlowApp::init(){
     findImageSizeFromFirstImage();
     openImages();
     if (gray){
-        convertImages();
+        d = 1;
     }
 
     buildMatrixAndRunPca();
@@ -142,6 +142,9 @@ void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
     for (int i = 0; i < faceList.size(); i++){
         Mat img = cvLoadImage(faceList[i].c_str(), CV_LOAD_IMAGE_COLOR);
+        if (gray){
+            cvtColor(img, img, CV_BGR2GRAY);
+        }
         img.convertTo(img, CV_64FC3, 1.0/255, 0);
         if (img.data != NULL){
             faceImages.push_back(img);
@@ -157,6 +160,10 @@ void CollectionFlowApp::convertImages(){
     printf("[convertImages] %d images in list\n", (int)faceImages.size());
     for (int i = 0; i < faceImages.size(); i++){
         Mat im = faceImages[i];
+        if (im.depth() == CV_64F){
+            im.convertTo(im, CV_32FC3, 1.0, 0);
+        }
+        printf("image depth: %d, %d %d\n", im.channels(), im.depth(), CV_64F);
         Mat gray;
         cvtColor(im, gray, CV_BGR2GRAY);
         faceImages[i] = gray;
@@ -168,6 +175,7 @@ void CollectionFlowApp::convertImages(){
     if (visualize){
         Mat m = faceImages[0];
         imshow("Converted image", m);
+        waitKey(0);
     }
 }
 
@@ -240,7 +248,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    for (int k = 4; k < 20; k++){
+    for (int k = 4; k < 7; k++){
         printf("\t[COLLECTION FLOW] RANK %d\n", k);
 
         gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
@@ -258,6 +266,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
         gslVecToMat(m_gsl_mean, m);
         if (visualize){    
             imshow("mean image", m);
+            waitKey(0);
         }
         char filename[100];
         sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
@@ -399,7 +408,12 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
 
             Mat warped;
-            CVOpticalFlow::warp(warped, m_highrank, vx, vy);
+            if (gray){
+                CVOpticalFlow::warpGray(warped, m_highrank, vx, vy);
+            }
+            else {
+                CVOpticalFlow::warp(warped, m_highrank, vx, vy);
+            }
             
             m_highrank = warped;
 

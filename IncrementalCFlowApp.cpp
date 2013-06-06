@@ -24,7 +24,7 @@ void PrintUsage()
 {
     printf("Usage:  \n" \
             "   \t--newFace <file>\n" \
-            "   \t--oldAvgFace <file> [existing average face]\n" \
+            "   \t--avgFace <file> [existing average face]\n" \
             "   \t--numFaces <number>\n" \
             "   \t--eigenfaces <file> [list of paths to eigenfaces to use]\n" \
             "   \t--output <path> path to save new files to\n" \
@@ -134,6 +134,7 @@ void IncrementalCFlowApp::loadFaces(){
     if (visualize){
         imshow("new face", newFace);
         imshow("old average face", avgFace);
+        waitKey(0);
     }
 }
 
@@ -152,6 +153,33 @@ void IncrementalCFlowApp::loadEigenfaces(){
         perror (eigenfacesFile);
     }
 
+    // try to determine if its grayscale or not
+    gsl_vector *test_vec = gsl_vector_calloc(w*h);
+    gsl_vector *test_vec3 = gsl_vector_calloc(w*h*3);
+    FILE *f = fopen(eigenfacesList[0].c_str(), "rb");
+    if (gsl_vector_fread(f, test_vec)==0){
+        printf("[loadEigenfaces] vector read successfully into 1-channel vector\n");
+        d = 1;
+    }
+    else {
+        rewind(f);
+        if (gsl_vector_fread(f, test_vec3)==0){
+            printf("[loadEigenfaces] read into THREE- channel vector\n");
+            d = 3;
+        }
+    }
+    printf("DEPTH OF IMAGES: %d\n", d);
+    if (d == 1){
+        printf("[loadEigenfaces] gotta convert our image to a different number of channels!\n");
+        newFace.convertTo(newFace, CV_32FC3);
+        cvtColor(newFace,newFace,CV_RGB2GRAY);
+        newFace.convertTo(newFace, CV_64F);
+        
+        avgFace.convertTo(avgFace, CV_32FC3);
+        cvtColor(avgFace,avgFace,CV_RGB2GRAY);
+        avgFace.convertTo(avgFace, CV_64F);
+    }
+
     num_pixels = w*h*d;
     num_eigenfaces = eigenfacesList.size();
 
@@ -165,6 +193,12 @@ void IncrementalCFlowApp::loadEigenfaces(){
     matToGslVec(newFace, m_gsl_newface);
     printf("done supposedly loading mean face into gsl matrix");
 
+    if (visualize){
+        imshow("newface", newFace);
+        imshow("avgface", avgFace);
+        waitKey(20);
+    }
+
     // eigenfaces
     printf("sizes of things. num_pixels: %d, num eigenfaces: %d\n", num_pixels, num_eigenfaces);
     m_gsl_eigenfaces = gsl_matrix_calloc(num_pixels, num_eigenfaces);
@@ -177,6 +211,7 @@ void IncrementalCFlowApp::loadEigenfaces(){
             Mat face;
             gslVecToMat(&(col.vector), face);
             imshow("loaded eigenface", face);
+            waitKey(20);
         }
     }
 }
@@ -239,7 +274,12 @@ void IncrementalCFlowApp::warpNewFace(){
     
     CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
 
-    CVOpticalFlow::warp(warped, m_highrank, vx, vy);
+    if (d == 3){
+        CVOpticalFlow::warp(warped, m_highrank, vx, vy);
+    }
+    else {
+        CVOpticalFlow::warpGray(warped, m_highrank, vx, vy);
+    }
 
     if (visualize){
         imshow("the warped picture", warped);
