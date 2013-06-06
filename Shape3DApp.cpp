@@ -38,7 +38,8 @@ void PrintUsage()
     printf("Usage:  \n" \
             "   \t--input <file> [file with one image per line]\n" \
             "   \t--templateMesh <file> [template 3D point cloud]\n" \
-            "   \t--output <file> [image to save warped face to]\n" \
+            "   \t--output <file> [json 3d object to save warped face to]\n" \
+            "   \t--ply <file> [ply file to save warped face to]\n" \
             "   \t--visualize [if you want to see images of the progress]\n" \
             "\n");
 }
@@ -49,8 +50,9 @@ void Shape3DApp::processOptions(int argc, char **argv){
             {"help",        0, 0, 'h'},
             {"templateMesh",    1, 0, 402},
             {"output",          1, 0, 403},
-            {"input",            1, 0, 406},
+            {"input",           1, 0, 406},
             {"visualize",       0, 0, 407},
+            {"ply",             1, 0, 408},
             {0,0,0,0} 
         };
 
@@ -84,6 +86,10 @@ void Shape3DApp::processOptions(int argc, char **argv){
                 printf("visualize = true\n");
                 break;
 
+            case 408:
+                outFacePly = optarg;
+                break;
+
             default: 
                 printf("Unrecognized option %d\n", c);
                 break;
@@ -95,6 +101,7 @@ void Shape3DApp::init(){
     printf("[init] Running program %s\n", argv[0]);
     useList = false;
     visualize = false;
+    outFacePly = NULL;
 
     if (argc < 2 ){
         PrintUsage();
@@ -570,87 +577,95 @@ void Shape3DApp::recoverDepth(){
      // Solving:
     Eigen::SimplicialCholesky<SpMat> chol(M); // performs a Cholesky factorization of A
     Eigen::VectorXd x = chol.solve(b2); // use the factorization to solve for the given right hand side
+    x = Scaling(2.0)*x;
 
     printf("Solved.\n");
 
-    FILE *f = fopen(outFaceFile, "w");
+    
 
-    /*
-    fprintf(f,"ply\n");
-    fprintf(f,"format ascii 1.0\n");
-    fprintf(f,"comment VCGLIB generated\n");
-    fprintf(f,"element vertex %d\n", (int)templateMesh.size());
-    fprintf(f,"property float x\n");
-    fprintf(f,"property float y\n");
-    fprintf(f,"property float z\n");
-    fprintf(f,"property float nx\n");
-    fprintf(f,"property float ny\n");
-    fprintf(f,"property float nz\n");
-    fprintf(f,"end_header\n");
-
-    for (int i = 0; i < templateMesh.size(); i++){
-        Point3f p = templateMesh[i];
-        double nx = gsl_matrix_get(m_gsl_final_result, 1, i);
-        double ny = gsl_matrix_get(m_gsl_final_result, 2, i);
-        double nz = gsl_matrix_get(m_gsl_final_result, 3, i); 
-        fprintf(f, "%f %f %f %f %f %f\n", p.x, p.y, x(i), nx, ny, nz);
-    }
-
-    fclose(f);
-    */
+    if (outFacePly){
+        printf("printing ply file\n");
+        FILE *f = fopen(outFacePly, "w");
 
     
-    fprintf(f, "{\n");
-    fprintf(f, "\"metadata\": { \"formatVersion\" : 3 },\n");
-    fprintf(f, "\"scale\" : 5,\n");
-    fprintf(f, "\"materials\": [],\n");
-    fprintf(f, "\"vertices\": [");
-    
-    //print vertices!
-    for (int i = 0; i < templateMesh.size(); i++){
-        Point3f p = templateMesh[i];
-        fprintf(f, "%f,%f,%f", p.x-65, 100-p.y, x(i));
-        if (i < templateMesh.size()-1){
-            fprintf(f,",");
+        fprintf(f,"ply\n");
+        fprintf(f,"format ascii 1.0\n");
+        fprintf(f,"comment VCGLIB generated\n");
+        fprintf(f,"element vertex %d\n", (int)templateMesh.size());
+        fprintf(f,"property float x\n");
+        fprintf(f,"property float y\n");
+        fprintf(f,"property float z\n");
+        fprintf(f,"property float nx\n");
+        fprintf(f,"property float ny\n");
+        fprintf(f,"property float nz\n");
+        fprintf(f,"end_header\n");
+
+        for (int i = 0; i < templateMesh.size(); i++){
+            Point3f p = templateMesh[i];
+            double nx = gsl_matrix_get(m_gsl_final_result, 1, i);
+            double ny = gsl_matrix_get(m_gsl_final_result, 2, i);
+            double nz = gsl_matrix_get(m_gsl_final_result, 3, i); 
+            fprintf(f, "%f %f %f %f %f %f\n", p.x, p.y, x(i), nx, ny, nz);
         }
+
+        fclose(f);
     }
-
-    fprintf(f, "],\n");
-    fprintf(f, "\"morphTargets\": [],\n");
-    fprintf(f, "\"normals\": [],\n");
-    fprintf(f, "\"colors\": [],\n");
-    fprintf(f, "\"uvs\": [[]],\n");
-    fprintf(f, "\"faces\": [");
     
-    bool printedSomethingYet = false;
-    // print faces!
-    for (int i = 0; i < templateMesh.size(); i++){
-        Point3f p = templateMesh[i];
-        int x = p.x;
-        int y = p.y;
 
-        int x1y = lookup.at<int>(p.x+1, p.y);
-        int x1y1 = lookup.at<int>(p.x+1, p.y+1);
-        int xy1 = lookup.at<int>(p.x, p.y+1);
+    else {
+        FILE *f = fopen(outFaceFile, "w");
 
-        if (x1y != 0 && x1y1 != 0 && xy1 != 0){
-            // make a quad
-            if (printedSomethingYet){
+        fprintf(f, "{\n");
+        fprintf(f, "\"metadata\": { \"formatVersion\" : 3 },\n");
+        fprintf(f, "\"scale\" : 5,\n");
+        fprintf(f, "\"materials\": [],\n");
+        fprintf(f, "\"vertices\": [");
+        
+        //print vertices!
+        for (int i = 0; i < templateMesh.size(); i++){
+            Point3f p = templateMesh[i];
+            fprintf(f, "%f,%f,%f", p.x-65, 100-p.y, x(i));
+            if (i < templateMesh.size()-1){
                 fprintf(f,",");
             }
-            else {
-                printedSomethingYet = true;
-            }
-            fprintf(f,"1,%d,%d,%d,%d", i, xy1, x1y1, x1y);
         }
+
+        fprintf(f, "],\n");
+        fprintf(f, "\"morphTargets\": [],\n");
+        fprintf(f, "\"normals\": [],\n");
+        fprintf(f, "\"colors\": [],\n");
+        fprintf(f, "\"uvs\": [[]],\n");
+        fprintf(f, "\"faces\": [");
+        
+        bool printedSomethingYet = false;
+        // print faces!
+        for (int i = 0; i < templateMesh.size(); i++){
+            Point3f p = templateMesh[i];
+            int x = p.x;
+            int y = p.y;
+
+            int x1y = lookup.at<int>(p.x+1, p.y);
+            int x1y1 = lookup.at<int>(p.x+1, p.y+1);
+            int xy1 = lookup.at<int>(p.x, p.y+1);
+
+            if (x1y != 0 && x1y1 != 0 && xy1 != 0){
+                // make a quad
+                if (printedSomethingYet){
+                    fprintf(f,",");
+                }
+                else {
+                    printedSomethingYet = true;
+                }
+                fprintf(f,"1,%d,%d,%d,%d", i, xy1, x1y1, x1y);
+            }
+        }
+
+        fprintf(f, "],\n");
+        fprintf(f, "\"edges\" : []\n");
+        fprintf(f, "}\n");
+
+        fclose(f);
     }
-
-    fprintf(f, "],\n");
-    fprintf(f, "\"edges\" : []\n");
-    fprintf(f, "}\n");
-
-    fclose(f);
-    
 
 }
 

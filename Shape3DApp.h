@@ -47,6 +47,7 @@ public:
     char templatePointsFile[1024];
     char canonicalPointsFile[1024];
     char outFaceFile[1024];
+    char *outFacePly;
     char listFile[1024];
     bool useList;
 
