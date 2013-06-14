@@ -1,8 +1,5 @@
 /* WarpFaceApp.cpp */
 
-//make -f Makefile.mac warpFace && ./warpFace --list oagTest/images_unwarped_with_points.txt 
-//--templateMesh model/grid-igor2.txt --templatePoints model/grid-igor-fiducials2.txt --canonicalPoints model/grid-igor-canonical2d.txt --visualize
-
 
 #include "WarpFaceApp.h"
 #include "getopt.h"
