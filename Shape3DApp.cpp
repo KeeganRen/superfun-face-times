@@ -584,7 +584,8 @@ void Shape3DApp::recoverDepth(){
     }
 
 
-    x = Scaling(2.0)*x;
+    //x = Scaling(2.0)*x;
+    printf("not scaling\n");
 
     printf("Solved.\n");
 
