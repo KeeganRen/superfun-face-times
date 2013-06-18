@@ -3,6 +3,53 @@
 
 #include "CVOpticalFlow.h"
 
+void CVOpticalFlow::writeFlow(char* filename, Mat &vx, Mat &vy){
+    int rows = vx.rows;
+    int cols = vx.cols;
+
+    ofstream f;
+    f.open(filename, ios::out | ios::binary);
+    
+    f.write(reinterpret_cast<char*>(&rows), sizeof(int));
+    f.write(reinterpret_cast<char*>(&cols), sizeof(int));
+
+    for (int i=0; i<rows; i++) {
+        for (int j=0; j<cols; j++) {
+            double x = vx.at<double>(i, j);
+            double y = vy.at<double>(i, j);
+
+            f.write(reinterpret_cast<char*>(&x), sizeof(double));
+            f.write(reinterpret_cast<char*>(&y), sizeof(double));
+        }
+    }
+    
+    f.close();
+}
+
+void CVOpticalFlow::readFlow(char* filename, Mat &vx, Mat &vy){
+    ifstream f;
+    f.open(filename, ios::in | ios::binary);
+    int rows, cols;
+    f.read(reinterpret_cast<char*>(&rows), sizeof(int));
+    f.read(reinterpret_cast<char*>(&cols), sizeof(int));
+
+    vx = Mat(rows, cols, CV_64F);
+    vy = Mat(rows, cols, CV_64F);
+
+    for (int i=0; i<rows; i++) {
+        for (int j=0; j<cols; j++) {
+            double x, y;
+
+            f.read(reinterpret_cast<char*>(&x), sizeof(double));
+            f.read(reinterpret_cast<char*>(&y), sizeof(double));
+            vx.at<double>(i, j) = x;
+            vy.at<double>(i, j) = y;
+        }
+    }
+    
+    f.close();
+}
+
 Mat CVOpticalFlow::showFlow(Mat &vxi, Mat &vyi) {
   Mat vx = vxi.clone();
   Mat vy = vyi.clone();
@@ -80,7 +127,7 @@ void CVOpticalFlow::warp(Mat &out, Mat &im, Mat &vx, Mat &vy) {
   out = Mat(im.size(), CV_64FC3);
   for (int i=0; i<out.rows; i++) {
     for (int j=0; j<out.cols; j++) {
-      bilinearGray(&out.at<Vec3d>(i, j)[0], im, i+vy.at<double>(i, j), j+vx.at<double>(i, j), 3);
+      bilinear(&out.at<Vec3d>(i, j)[0], im, i+vy.at<double>(i, j), j+vx.at<double>(i, j), 3);
     }
   }
 }
