@@ -544,6 +544,17 @@ void Shape3DApp::recoverDepth(){
             coefficients.push_back(T(coef_count, xy, -nz));
             coef_count++;
         }
+        /* 
+         * boundary conditions smishons
+        else {
+            b_vec.push_back(0);
+            coefficients.push_back(T(coef_count, xy1, -nx));
+            coefficients.push_back(T(coef_count, xy, nx));
+            coefficients.push_back(T(coef_count, x1y, ny));
+            coefficients.push_back(T(coef_count, xy, -ny));
+            coef_count++;
+        }
+        */
 
 
     }

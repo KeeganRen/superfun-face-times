@@ -242,19 +242,24 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
     gsl_matrix *m_gsl_mat_k = gsl_matrix_calloc(num_pixels, num_images);
 
     for (int i = 0; i < faceImages.size(); i++){
+        // populate matrix of original images
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
         matToGslVec(faceImages[i], &col.vector);
+
+        // populate this other matrix, too
+        gsl_vector_view col_k = gsl_matrix_column(m_gsl_mat_k, i);
+        matToGslVec(faceImages[i], &col_k.vector);
     }
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    for (int k = 4; k < 7; k++){
+    for (int k = 4; k < 10; k++){
         printf("\t[COLLECTION FLOW] RANK %d\n", k);
 
         gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
 
         for (int i = 0; i < faceImages.size(); i++){
-            gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
+            gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
             gsl_vector_add(m_gsl_mean, &col.vector);
         }
 
@@ -276,9 +281,6 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
         sprintf(generalMeanFilename, "%s/clustermean.jpg", outputDir);
         saveAs(generalMeanFilename, m);
 
-        // copy m_gsl_mat into m_gsl_mat_k so we can do SVD
-        gsl_matrix_memcpy(m_gsl_mat_k, m_gsl_mat);
-        
         // subtract mean?
         bool use_mean = true;
         if (use_mean){
@@ -379,11 +381,13 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
 
             char filename1[100], filename2[100], filename3[100];
+            char flowFile[100];
             const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
             sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
             sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
             sprintf(filename3, "%s/%s-warped.jpg", outputDir, faceStr);
+            sprintf(flowFile,  "%s/%s-flow.bin", outputDir, faceStr);
 
             //saveAs(filename1, m_highrank);
             saveAs(filename2, m_lowrank);
@@ -407,6 +411,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             }
 
 
+
             Mat warped;
             if (gray){
                 CVOpticalFlow::warpGray(warped, m_highrank, vx, vy);
@@ -422,9 +427,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 waitKey(0);
             }
 
-            matToGslVec(m_highrank, &col_high.vector);
+            matToGslVec(m_highrank, &col_low.vector);
 
 
+            CVOpticalFlow::writeFlow(flowFile, vx, vy);
             saveAs(filename3, m_highrank);
             
         }
