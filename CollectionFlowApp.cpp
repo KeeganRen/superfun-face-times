@@ -141,12 +141,13 @@ void CollectionFlowApp::findImageSizeFromFirstImage(){
 void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
     for (int i = 0; i < faceList.size(); i++){
-        Mat img = cvLoadImage(faceList[i].c_str(), CV_LOAD_IMAGE_COLOR);
-        if (gray){
-            cvtColor(img, img, CV_BGR2GRAY);
-        }
-        img.convertTo(img, CV_64FC3, 1.0/255, 0);
+        printf("opening image %d: %s\n", i, faceList[i].c_str());
+        Mat img = imread(faceList[i].c_str());
         if (img.data != NULL){
+            if (gray){
+                cvtColor(img, img, CV_BGR2GRAY);
+            }
+            img.convertTo(img, CV_64FC3, 1.0/255, 0);
             faceImages.push_back(img);
         }
         else {
