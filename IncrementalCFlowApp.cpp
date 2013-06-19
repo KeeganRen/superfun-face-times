@@ -22,13 +22,17 @@ void error(char *msg) {
 
 void PrintUsage() 
 {
+    printf("\nABOUT THIS PROGRAM: takes a new face and some old eigenfaces," \
+        "projects new face into space of old faces, makes a new average image.\n\n");
     printf("Usage:  \n" \
             "   \t--newFace <file>\n" \
             "   \t--avgFace <file> [existing average face]\n" \
             "   \t--numFaces <number>\n" \
+            "   \t--faceList <file> [list of faces]\n" \
             "   \t--eigenfaces <file> [list of paths to eigenfaces to use]\n" \
             "   \t--output <path> path to save new files to\n" \
             "   \t--visualize [visualize progress]\n" \
+            "\n to make things fast for the website stuff, including the faceList will not project/warp the newFace\n" \
             "\n");
 }
 
@@ -42,6 +46,7 @@ void IncrementalCFlowApp::processOptions(int argc, char **argv){
             {"eigenfaces",  1, 0, 403},
             {"numFaces",    1, 0, 404},
             {"output",      1, 0, 405},
+            {"faceList",    1, 0, 406},
             {0,0,0,0} 
         };
 
@@ -83,6 +88,10 @@ void IncrementalCFlowApp::processOptions(int argc, char **argv){
                 sprintf(outputDir, "%s", optarg);
                 break;
 
+            case 406:
+                facesFile = optarg;
+                break;
+
             default: 
                 printf("Unrecognized option %d\n", c);
                 break;
@@ -93,7 +102,8 @@ void IncrementalCFlowApp::processOptions(int argc, char **argv){
 void IncrementalCFlowApp::init(){
     printf("[init] Running program %s\n", argv[0]);
     visualize = false;
-    
+    facesFile = NULL;
+
     if (argc < 2 ){
         PrintUsage();
         exit(0);
@@ -107,10 +117,14 @@ void IncrementalCFlowApp::init(){
     
     //printf("face file name: %s\n", faceFileName(newFaceFile));
 
-    projectNewFace();
-    warpNewFace();
-    makeNewAvg();
-
+    if (facesFile == NULL){
+        projectNewFace();
+        warpNewFace();
+        makeNewAvg();
+    }
+    else {
+        makeNewEigenfaces();
+    }
     /*
     
     openImages();
@@ -157,15 +171,26 @@ void IncrementalCFlowApp::loadEigenfaces(){
     gsl_vector *test_vec = gsl_vector_calloc(w*h);
     gsl_vector *test_vec3 = gsl_vector_calloc(w*h*3);
     FILE *f = fopen(eigenfacesList[0].c_str(), "rb");
-    if (gsl_vector_fread(f, test_vec)==0){
-        printf("[loadEigenfaces] vector read successfully into 1-channel vector\n");
-        d = 1;
-    }
-    else {
-        rewind(f);
+    
+    bool alwaysUseThree = true;
+
+    if (alwaysUseThree){
         if (gsl_vector_fread(f, test_vec3)==0){
             printf("[loadEigenfaces] read into THREE- channel vector\n");
             d = 3;
+        }
+    }
+    else {
+        if (gsl_vector_fread(f, test_vec)==0){
+            printf("[loadEigenfaces] vector read successfully into 1-channel vector\n");
+            d = 1;
+        }
+        else {
+            rewind(f);
+            if (gsl_vector_fread(f, test_vec3)==0){
+                printf("[loadEigenfaces] read into THREE- channel vector\n");
+                d = 3;
+            }
         }
     }
     printf("DEPTH OF IMAGES: %d\n", d);
@@ -316,6 +341,44 @@ void IncrementalCFlowApp::makeNewAvg(){
     saveAs(generalMeanFilename, newAvg);
 }
 
+void IncrementalCFlowApp::makeNewEigenfaces(){
+    // Load Faces From File
+    printf("[loadFacesFromList] Loading faces from list: %s\n", facesFile);
+    vector<string> faceList;
+    FILE *file = fopen ( facesFile, "r" );
+    if ( file != NULL ) {
+        char line [ 256 ]; 
+        while( fscanf(file, "%s\n", line) > 0 ) {
+            printf("\tface file found: %s\n", line);
+            faceList.push_back(string(line));
+        }
+        fclose (file);
+    }
+    else {
+        perror (facesFile);
+    }
+
+    // open images
+    for (int i = 0; i < faceList.size(); i++){
+        Mat img = cvLoadImage(faceList[i].c_str(), CV_LOAD_IMAGE_COLOR);
+        /*
+        if (gray){
+            cvtColor(img, img, CV_BGR2GRAY);
+        }
+        */
+        img.convertTo(img, CV_64FC3, 1.0/255, 0);
+        if (img.data != NULL){
+            faceImages.push_back(img);
+        }
+        else {
+            printf("Error loading image %s\n", faceList[i].c_str());
+        }
+    }
+
+    printf("**** d = %d\n", d);
+    buildMatrixAndRunPca();
+}
+
 const char* IncrementalCFlowApp::faceFileName(char* f){
     string filename = string(f);
     int idx1 = filename.rfind("/");
@@ -393,9 +456,6 @@ void IncrementalCFlowApp::buildMatrixAndRunPca(){
    // the "original" images
     gsl_matrix *m_gsl_mat = gsl_matrix_calloc(num_pixels, num_images);
 
-    // the low rank images
-    gsl_matrix *m_gsl_mat_k = gsl_matrix_calloc(num_pixels, num_images);
-
     for (int i = 0; i < faceImages.size(); i++){
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
         matToGslVec(faceImages[i], &col.vector);
@@ -403,176 +463,81 @@ void IncrementalCFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    for (int k = 4; k < 20; k++){
-        printf("\t[COLLECTION FLOW] RANK %d\n", k);
+    int k = num_eigenfaces;
 
-        gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
+    gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
 
+    for (int i = 0; i < faceImages.size(); i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
+        gsl_vector_add(m_gsl_mean, &col.vector);
+    }
+
+    gsl_vector_scale(m_gsl_mean, 1.0/num_images);
+
+    printf("[buildMatrixAndRunPca] Mean computed\n");
+
+    Mat m;
+    gslVecToMat(m_gsl_mean, m);
+    if (visualize){    
+        imshow("mean image", m);
+    }
+
+    char generalMeanFilename[100];
+    sprintf(generalMeanFilename, "%s/clustermean.jpg", outputDir);
+    saveAs(generalMeanFilename, m);
+    
+    // subtract mean?
+    bool use_mean = true;
+    if (use_mean){
+        printf("[buildMatrixAndRunPca] Subtracting mean from each image\n");
         for (int i = 0; i < faceImages.size(); i++){
             gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
-            gsl_vector_add(m_gsl_mean, &col.vector);
-        }
-
-        gsl_vector_scale(m_gsl_mean, 1.0/num_images);
-
-        printf("[buildMatrixAndRunPca] Mean computed\n");
-
-        Mat m;
-        gslVecToMat(m_gsl_mean, m);
-        if (visualize){    
-            imshow("mean image", m);
-        }
-        char filename[100];
-        sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
-        saveAs(filename, m);
-
-        // copy m_gsl_mat into m_gsl_mat_k so we can do SVD
-        gsl_matrix_memcpy(m_gsl_mat_k, m_gsl_mat);
-        
-        // subtract mean?
-        bool use_mean = true;
-        if (use_mean){
-            printf("[buildMatrixAndRunPca] Subtracting mean from each image\n");
-            for (int i = 0; i < faceImages.size(); i++){
-                gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
-                gsl_vector_sub(&col.vector, m_gsl_mean);
-            }
-            
-            gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, 1);
-            Mat face;
-            gslVecToMat(&(col.vector), face);
-            if (visualize)
-                imshow("face with mean subtracted", face);
-        }
-
-        gsl_vector *S = gsl_vector_calloc(num_images);
-        gsl_matrix *V = gsl_matrix_calloc(num_images, num_images);
-        gsl_vector *work = gsl_vector_calloc(num_images);
-
-        printf("[buildMatrixAndRunPca] computing SVD!\n");
-
-        int res = gsl_linalg_SV_decomp(m_gsl_mat_k, V, S, work);
-
-        printf("[buildMatrixAndRunPca] SVD computed, result: %d\n", res);
-
-        
-        gsl_vector *vec_work = gsl_vector_calloc(num_pixels);
-
-        // try visualizing eigenfaces
-        for (int i = 0; i <= k; i++){
-            gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
-            gsl_vector_memcpy(vec_work, &col.vector);
-            gsl_vector_scale(vec_work, gsl_vector_get(S, i));
-
-            Mat eigenface;
-            gslVecToMat(vec_work, eigenface);
-
-            if (visualize){
-                char eig_title[30];
-                sprintf(eig_title, "eigenface #%d", i);
-                imshow(eig_title, eigenface);
-            }
-
-            char filename[100];
-            sprintf(filename, "%s/eigen%02d.jpg", outputDir, i);
-            saveAs(filename, eigenface);
-
-            char filenameBin[100];
-            sprintf(filenameBin, "%s/eigen%02d.bin", outputDir, i);
-            saveBinaryEigenface(filenameBin, vec_work);
-            
+            gsl_vector_sub(&col.vector, m_gsl_mean);
         }
         
+        gsl_vector_view col = gsl_matrix_column(m_gsl_mat, 1);
+        Mat face;
+        gslVecToMat(&(col.vector), face);
+        if (visualize)
+            imshow("face with mean subtracted", face);
+    }
 
-        gsl_matrix *S_mat = gsl_matrix_calloc(num_images, num_images);
-        gsl_matrix_set_zero(S_mat);
+    gsl_vector *S = gsl_vector_calloc(num_images);
+    gsl_matrix *V = gsl_matrix_calloc(num_images, num_images);
+    gsl_vector *work = gsl_vector_calloc(num_images);
 
-        for (int i = 0; i < k; i++){
-            printf("\tSVD %d: %f\n", i, gsl_vector_get(S, i));
-            gsl_matrix_set(S_mat, i, i, gsl_vector_get(S, i));
-        }
-        
-        gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,
-                           1.0, m_gsl_mat_k, S_mat,
-                           0.0, m_gsl_mat_k);
+    printf("[buildMatrixAndRunPca] computing SVD!\n");
 
-        
-        gsl_blas_dgemm (CblasNoTrans, CblasTrans,
-                           1.0, m_gsl_mat_k, V,
-                           0.0, m_gsl_mat_k);
+    int res = gsl_linalg_SV_decomp(m_gsl_mat, V, S, work);
 
+    printf("[buildMatrixAndRunPca] SVD computed, result: %d\n", res);
 
-        if (use_mean){
-            printf("[buildMatrixAndRunPca] Adding mean back\n");
-            for (int i = 0; i < faceImages.size(); i++){
-                gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
-                gsl_vector_add(&col.vector, m_gsl_mean);
-            }
-        }
-
-        // try visualizing faces in lower space
-        for (int i = 0; i < num_images; i++){
-            printf("visualizing the low rank images\n");
-
-            Mat m_lowrank;
-            gsl_vector_view col_low = gsl_matrix_column(m_gsl_mat_k, i);
-            gslVecToMat(&col_low.vector, m_lowrank);
-
-            Mat m_highrank;
-            gsl_vector_view col_high = gsl_matrix_column(m_gsl_mat, i);
-            gslVecToMat(&col_high.vector, m_highrank);
     
-            if (visualize){
-                imshow("high rank", m_highrank);
-                imshow("low rank", m_lowrank);
-            }
+    gsl_vector *vec_work = gsl_vector_calloc(num_pixels);
 
+    // try visualizing eigenfaces
+    for (int i = 0; i <= k; i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
+        gsl_vector_memcpy(vec_work, &col.vector);
+        gsl_vector_scale(vec_work, gsl_vector_get(S, i));
 
-            char filename1[100], filename2[100], filename3[100];
-            const char *faceStr = faceFileName(newFaceFile);
-            printf("face filename: %s\n", faceStr);
-            sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
-            sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
-            sprintf(filename3, "%s/%s-warped.jpg", outputDir, faceStr);
+        Mat eigenface;
+        gslVecToMat(vec_work, eigenface);
 
-            //saveAs(filename1, m_highrank);
-            saveAs(filename2, m_lowrank);
-
-            
-            printf("[computeFlow] image %d/%d\n", i, num_images);
-            // magic variables
-            double alpha = 0.03;
-            double ratio = 0.85;
-            int minWidth = 20;
-            int nOuterFPIterations = 4;
-            int nInnerFPIterations = 1;
-            int nSORIterations = 40;
-            
-            Mat vx, vy, warp;
-            
-            CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-            if (visualize){
-                imshow("the warped picture", warp);
-                imshow("flow", CVOpticalFlow::showFlow(vx, vy));
-            }
-
-
-            Mat warped;
-            CVOpticalFlow::warp(warped, m_highrank, vx, vy);
-            
-            m_highrank = warped;
-
-            if (visualize){
-                imshow("warped back", m_highrank);
-                waitKey(0);
-            }
-
-            matToGslVec(m_highrank, &col_high.vector);
-
-
-            saveAs(filename3, m_highrank);
-            
+        if (visualize){
+            char eig_title[30];
+            sprintf(eig_title, "eigenface #%d", i);
+            imshow(eig_title, eigenface);
         }
+
+        char filename[100];
+        sprintf(filename, "%s/eigen%02d.jpg", outputDir, i);
+        saveAs(filename, eigenface);
+
+        char filenameBin[100];
+        sprintf(filenameBin, "%s/eigen%02d.bin", outputDir, i);
+        saveBinaryEigenface(filenameBin, vec_work);
+        
     }
 }
 
