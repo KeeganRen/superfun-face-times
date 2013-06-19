@@ -22,6 +22,7 @@ void error(char *msg) {
 
 void PrintUsage() 
 {
+    printf("\nABOUT THIS PROGRAM AND WHAT IT DOES: runs collection flow on a collection of images!\n\n");
     printf("Usage:  \n" \
             "   \t--input <file> [file containing list of pre-detected/cropped images to process]\n" \
             "   \t--output <path to directory> [dir to put eigenface and low rank faces into]\n" \

@@ -24,6 +24,9 @@ void error(char *msg) {
 
 void PrintUsage() 
 {
+    printf("\nABOUT THIS CODE AND WHAT IT DOES:\nFor testing out different face alignment methods:\n");
+    printf(" - affine anchored on the eyes+mouth\n");
+    printf(" - etc...\n\n");
     printf("Usage:  \n" \
             "   \t<face image> <face points>\n" \
             "   \t or\n" \

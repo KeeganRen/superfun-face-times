@@ -19,6 +19,7 @@ public:
     void projectNewFace();
     void warpNewFace();
     void makeNewAvg();
+    void makeNewEigenfaces();
     void buildMatrixAndRunPca();
     void saveAs(char* filename, Mat m);
     void saveBinaryEigenface(char* filename, gsl_vector *f);
@@ -34,6 +35,7 @@ public:
     char newFaceFile[1024];
     char avgFaceFile[1024];
     char eigenfacesFile[1024];
+    char *facesFile;
     bool visualize;
 
     char outputDir[1024];
