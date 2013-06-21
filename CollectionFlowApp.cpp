@@ -205,7 +205,15 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
     if (d == 1){
         Mat m(w, h, CV_64F, vec->data);
         im = m;
-
+        // add black border
+        for (int i = 0; i < im.cols; i++){
+            im.at<double>(0, i) = 0;
+            im.at<double>(im.rows-1, i) = 0;
+        }
+        for (int i = 0; i < im.rows; i++){
+            im.at<double>(i, 0) = 0;
+            im.at<double>(i, im.cols-1) = 0;
+        }
     }
     if (d == 3){
         Mat m(w, h, CV_64FC3, vec->data);
@@ -220,7 +228,6 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
             im.at<Vec3d>(i, 0) = Vec3d(0, 0, 0);
             im.at<Vec3d>(i, im.cols-1) = Vec3d(0, 0, 0);
         }
-        imshow("BLACK BORDER ON SOME PART OF IMAGE", im);
     }
 }
 
@@ -280,8 +287,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    for (int k = 4; k < 7; k++){
-        printf("\t[COLLECTION FLOW] RANK %d\n", k);
+    int ranks[] = {4, 4, 5, 5};
+
+    for (int r = 0; r < 6; r++){
+        int k = ranks[r];
+        printf("\t[COLLECTION FLOW] RANK %d (r: %d)\n", k, r);
 
         gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
 
@@ -301,7 +311,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             waitKey(0);
         }
         char filename[100];
-        sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
+        sprintf(filename, "%s/mean-rank%02d-%d.jpg", outputDir, k, r);
         saveAs(filename, m);
 
         char generalMeanFilename[100];
