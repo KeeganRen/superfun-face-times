@@ -22,6 +22,7 @@ public:
     void saveBinaryEigenface(char* filename, gsl_vector *f);
     
     void gslVecToMat(gsl_vector *vec, Mat &m);
+    void gslVecToMatWithBorder(gsl_vector *vec, Mat &m);
     void matToGslVec(Mat &m, gsl_vector *vec);
 
     const char* faceFileName(int i);

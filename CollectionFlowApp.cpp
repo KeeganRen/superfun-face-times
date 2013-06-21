@@ -199,6 +199,39 @@ void CollectionFlowApp::gslVecToMat(gsl_vector *orig, Mat &im){
     //gsl_vector_free(vec);
 }
 
+void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
+    gsl_vector* vec = gsl_vector_calloc(orig->size);
+    gsl_vector_memcpy(vec, orig);
+
+    if (d == 1){
+        Mat m(w, h, CV_64F, vec->data);
+        im = m;
+        // add black border
+        for (int i = 0; i < im.cols; i++){
+            im.at<double>(0, i) = 0;
+            im.at<double>(im.rows-1, i) = 0;
+        }
+        for (int i = 0; i < im.rows; i++){
+            im.at<double>(i, 0) = 0;
+            im.at<double>(i, im.cols-1) = 0;
+        }
+    }
+    if (d == 3){
+        Mat m(w, h, CV_64FC3, vec->data);
+        im = m;
+        
+        // add black border
+        for (int i = 0; i < im.cols; i++){
+            im.at<Vec3d>(0, i) = Vec3d(0, 0, 0);
+            im.at<Vec3d>(im.rows-1, i) = Vec3d(0, 0, 0);
+        }
+        for (int i = 0; i < im.rows; i++){
+            im.at<Vec3d>(i, 0) = Vec3d(0, 0, 0);
+            im.at<Vec3d>(i, im.cols-1) = Vec3d(0, 0, 0);
+        }
+    }
+}
+
 void CollectionFlowApp::matToGslVec(Mat &im, gsl_vector *vec){
     for (int i = 0; i < w; i++){
         for (int j = 0; j < h; j++){
@@ -255,8 +288,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    for (int k = 4; k < 10; k++){
-        printf("\t[COLLECTION FLOW] RANK %d\n", k);
+    int ranks[] = {4, 4, 5, 5};
+
+    for (int r = 0; r < 6; r++){
+        int k = ranks[r];
+        printf("\t[COLLECTION FLOW] RANK %d (r: %d)\n", k, r);
 
         gsl_vector *m_gsl_mean = gsl_vector_calloc(num_pixels);
 
@@ -276,7 +312,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             waitKey(0);
         }
         char filename[100];
-        sprintf(filename, "%s/mean-rank%02d.jpg", outputDir, k);
+        sprintf(filename, "%s/mean-rank%02d-%d.jpg", outputDir, k, r);
         saveAs(filename, m);
 
         char generalMeanFilename[100];
@@ -370,11 +406,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
             Mat m_lowrank;
             gsl_vector_view col_low = gsl_matrix_column(m_gsl_mat_k, i);
-            gslVecToMat(&col_low.vector, m_lowrank);
+            gslVecToMatWithBorder(&col_low.vector, m_lowrank);
 
             Mat m_highrank;
             gsl_vector_view col_high = gsl_matrix_column(m_gsl_mat, i);
-            gslVecToMat(&col_high.vector, m_highrank);
+            gslVecToMatWithBorder(&col_high.vector, m_highrank);
     
             if (visualize){
                 imshow("high rank", m_highrank);
@@ -383,15 +419,16 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
 
             char filename1[100], filename2[100], filename3[100];
-            char flowFile[100];
+            char flowFile[100], flowImage[100];
             const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
             sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
             sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
             sprintf(filename3, "%s/%s-warped.jpg", outputDir, faceStr);
             sprintf(flowFile,  "%s/%s-flow.bin", outputDir, faceStr);
+            sprintf(flowImage,  "%s/%s-flow.jpg", outputDir, faceStr);
 
-            //saveAs(filename1, m_highrank);
+            saveAs(filename1, m_highrank);
             saveAs(filename2, m_lowrank);
 
             
@@ -434,6 +471,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
             CVOpticalFlow::writeFlow(flowFile, vx, vy);
             saveAs(filename3, m_highrank);
+            saveAs(flowImage, CVOpticalFlow::showFlow(vx, vy));
             
         }
     }
