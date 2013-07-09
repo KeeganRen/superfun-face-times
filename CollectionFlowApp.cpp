@@ -205,30 +205,22 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
 
     if (d == 1){
         Mat m(w, h, CV_64F, vec->data);
-        im = m;
-        // add black border
-        for (int i = 0; i < im.cols; i++){
-            im.at<double>(0, i) = 0;
-            im.at<double>(im.rows-1, i) = 0;
-        }
-        for (int i = 0; i < im.rows; i++){
-            im.at<double>(i, 0) = 0;
-            im.at<double>(i, im.cols-1) = 0;
-        }
+        Mat m_border(w + borderSize*2, h + borderSize*2, CV_64F, -1);
+        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        im = m_border;
     }
     if (d == 3){
         Mat m(w, h, CV_64FC3, vec->data);
-        im = m;
+        Mat m_border(w + borderSize*2, h + borderSize*2, CV_64FC3);
         
-        // add black border
-        for (int i = 0; i < im.cols; i++){
-            im.at<Vec3d>(0, i) = Vec3d(0, 0, 0);
-            im.at<Vec3d>(im.rows-1, i) = Vec3d(0, 0, 0);
+        for (int i = 0; i < m_border.rows; i++){
+            for (int j = 0; j < m_border.cols; j++){
+                m_border.at<Vec3d>(i, j) = Vec3d(0, 0, 0);
+            }
         }
-        for (int i = 0; i < im.rows; i++){
-            im.at<Vec3d>(i, 0) = Vec3d(0, 0, 0);
-            im.at<Vec3d>(i, im.cols-1) = Vec3d(0, 0, 0);
-        }
+
+        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        im = m_border;
     }
 }
 
@@ -251,10 +243,38 @@ void CollectionFlowApp::matToGslVec(Mat &im, gsl_vector *vec){
     }
 }
 
+void CollectionFlowApp::matToGslVecWithBorder(Mat &im, gsl_vector *vec){
+    for (int i = 0; i < w; i++){
+        for (int j = 0; j < h; j++){
+            if (d == 1){
+                int idx = i*h + j;
+                double val = im.at<double>(i + borderSize, j + borderSize);
+                gsl_vector_set(vec, idx, val);
+            }
+            else if (d == 3){
+                int idx = i*h + j;
+                Vec3d val = im.at<Vec3d>(i + borderSize, j + borderSize);
+                for (int k = 0; k < 3; k++){
+                    gsl_vector_set(vec, idx*3 + k, val[k]);
+                }
+            }
+        }
+    }
+}
+
 void CollectionFlowApp::saveAs(char* filename, Mat m){
     printf("[saveAs] saving image to file: %s\n", filename);
     Mat rightFormat;
     m.convertTo(rightFormat, CV_8UC3, 1.0*255, 0);
+    imwrite(filename, rightFormat);
+}
+
+void CollectionFlowApp::saveAsCropBorder(char* filename, Mat m){
+    printf("[saveAs] saving image to file (but cropping first): %s\n", filename);
+    Mat rightFormat;
+    m.convertTo(rightFormat, CV_8UC3, 1.0*255, 0);
+    Rect cropROI(borderSize, borderSize, h, w);
+    rightFormat = rightFormat(cropROI);
     imwrite(filename, rightFormat);
 }
 
@@ -288,9 +308,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    int ranks[] = {4, 4, 5, 5};
+    int ranks[] = {4, 5};
+    int len = 2;
 
-    for (int r = 0; r < 6; r++){
+    for (int r = 0; r < len; r++){
         int k = ranks[r];
         printf("\t[COLLECTION FLOW] RANK %d (r: %d)\n", k, r);
 
@@ -417,29 +438,28 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 imshow("low rank", m_lowrank);
             }
 
-
             char filename1[100], filename2[100], filename3[100];
             char flowFile[100], flowImage[100];
             const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
-            sprintf(filename1, "%s/%s-orig.jpg", outputDir, faceStr);
-            sprintf(filename2, "%s/%s-low.jpg", outputDir, faceStr);
-            sprintf(filename3, "%s/%s-warped.jpg", outputDir, faceStr);
-            sprintf(flowFile,  "%s/%s-flow.bin", outputDir, faceStr);
-            sprintf(flowImage,  "%s/%s-flow.jpg", outputDir, faceStr);
+            sprintf(filename1, "%s/%s-orig-%d.jpg", outputDir, faceStr, k);
+            sprintf(filename2, "%s/%s-low-%d.jpg", outputDir, faceStr, k);
+            sprintf(filename3, "%s/%s-warped-%d.jpg", outputDir, faceStr, k);
+            sprintf(flowFile,  "%s/%s-flow-%d.bin", outputDir, faceStr, k);
+            sprintf(flowImage,  "%s/%s-flow-%d.jpg", outputDir, faceStr, k);
 
-            saveAs(filename1, m_highrank);
-            saveAs(filename2, m_lowrank);
+            saveAsCropBorder(filename1, m_highrank);
+            saveAsCropBorder(filename2, m_lowrank);
 
             
             printf("[computeFlow] image %d/%d\n", i, num_images);
             // magic variables
-            double alpha = 0.03;
-            double ratio = 0.85;
-            int minWidth = 20;
-            int nOuterFPIterations = 4;
+            double alpha = 0.02; // 0.015 smaller parameter should make it look even more sharp
+            double ratio = 0.85; 
+            int minWidth = 40;
+            int nOuterFPIterations = 7;
             int nInnerFPIterations = 1;
-            int nSORIterations = 40;
+            int nSORIterations = 40; // sometimes use 20
             
             Mat vx, vy, warp;
             
@@ -466,12 +486,12 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 waitKey(0);
             }
 
-            matToGslVec(m_highrank, &col_low.vector);
+            matToGslVecWithBorder(m_highrank, &col_low.vector);
 
 
             CVOpticalFlow::writeFlow(flowFile, vx, vy);
-            saveAs(filename3, m_highrank);
-            saveAs(flowImage, CVOpticalFlow::showFlow(vx, vy));
+            saveAsCropBorder(filename3, m_highrank);
+            saveAsCropBorder(flowImage, CVOpticalFlow::showFlow(vx, vy));
             
         }
     }
