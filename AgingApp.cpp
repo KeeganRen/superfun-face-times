@@ -34,7 +34,7 @@ void PrintUsage()
 
 void AgingApp::init(){
     printf("[init] Running program %s\n", argv[0]);
-    visualize = true;
+    visualize = false;
 
     if (argc < 4 ){
         PrintUsage();
@@ -102,14 +102,14 @@ void AgingApp::init(){
         FaceLib::saveAs(file1, diff_im);
 
         diff_im = reshaped_face + diff_im;
-        imshow("difference image (texture)", diff_im);
+        //imshow("difference image (texture)", diff_im);
 
         char file2[256];
         sprintf(file2, "%swork/aging/face%d_cluster%d_refcluster%d_tex.jpg", data_path, face_id, cluster_id, ref_cluster_id);
         FaceLib::saveAs(file2, diff_im);
 
         Mat unflowed = FaceLib::computeFlowAndApplyFlow(projected_face, cluster_projected_face, diff_im);
-        imshow("unflowed", unflowed);
+        //imshow("unflowed", unflowed);
 
         char file3[256];
         sprintf(file3, "%swork/aging/face%d_cluster%d_refcluster%d_texshape.jpg", data_path, face_id, cluster_id, ref_cluster_id);
