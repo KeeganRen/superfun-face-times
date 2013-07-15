@@ -134,13 +134,7 @@ Mat FaceLib::computeFlowAndWarp(Mat &face2, Mat &face1){
 
     CVOpticalFlow::findFlow(vx, vy, warp, face1_border, face2_border, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
     Mat warp2 = removeBorder(warp);
-    if (1){
-        imshow("the warped picture", warp);
-        //imshow("the warped picture wo border", warp2);
-        //imshow("flow", CVOpticalFlow::showFlow(vx, vy));
-        //waitKey(0);
-    }
-
+    
     return warp2;
 }
 
