@@ -206,7 +206,7 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
     if (d == 1){
         Mat m(w, h, CV_64F, vec->data);
         Mat m_border(w + borderSize*2, h + borderSize*2, CV_64F, -1);
-        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        copyTo(m_border(Rect(borderSize, borderSize, h, w)));
         im = m_border;
     }
     if (d == 3){

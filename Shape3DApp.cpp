@@ -189,6 +189,7 @@ void Shape3DApp::setupShapeStuff(){
 
     m_gsl_model = gsl_matrix_calloc(4, num_points);
     m_gsl_images = gsl_matrix_calloc(num_points, num_images);
+    m_gsl_images_orig = gsl_matrix_calloc(num_points, num_images);
     m_gsl_s = gsl_matrix_calloc(4, num_points);
     m_gsl_final_result = gsl_matrix_alloc(4,num_points);
 }
@@ -319,8 +320,9 @@ void Shape3DApp::populateImageMatrix(){
             imshow("loaded face", drawable);
             waitKey(100);
         }
-    }
+    }   
 
+    gsl_matrix_memcpy(m_gsl_images_orig, m_gsl_images);
     printf("[populateImageMatrix] DONE!\n");
 }
 
@@ -393,6 +395,8 @@ void Shape3DApp::shapeStuff(){
         imshow("solved (new images) before albedo divided out", img0);
     } 
     
+
+
     for (int i = 0; i < num_points; i++){
         double albedo = gsl_matrix_get(m_gsl_final_result, 0, i);
         for (int k = 1; k < 4; k++){
@@ -400,7 +404,9 @@ void Shape3DApp::shapeStuff(){
         }
     }
     
+
     
+
     if (visualize){
         Mat img2 = Mat::zeros(h, w*4, CV_32F);
         for (int i = 0; i < num_points; i++){
@@ -433,6 +439,9 @@ void Shape3DApp::shapeStuff(){
         imshow("zx and zy", img3);
     }   
     
+    computeLightDistribution();
+
+
     recoverDepth();
 
     if (visualize){
@@ -496,6 +505,72 @@ void Shape3DApp::solveStuff(){
        
     //C = transform * xy
     gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, m_gsl_transform, m_gsl_xy, 0.0, m_gsl_final_result);
+
+}
+
+void Shape3DApp::computeLightDistribution(){
+    printf("[computeLightDistribution]\n");
+    MatrixXd imgs(num_images,num_points);
+    MatrixXd weights(num_images,4);
+    MatrixXd basis(4,num_points);
+
+    for (int i = 0; i < num_images; i++){
+        for (int j = 0; j < num_points; j++){
+            imgs(i, j) = gsl_matrix_get(m_gsl_images_orig, j, i);
+        }
+    }
+
+    printf("m_gsl_images populated\n");
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < num_points; j++){
+            basis(i, j) = gsl_matrix_get(m_gsl_final_result, i, j);
+        }
+    }
+
+    printf("matrices populated\n");
+
+
+    MatrixXd bbt(4,4);
+    bbt = basis * basis.transpose();
+    weights = imgs * basis.transpose() * bbt.inverse();
+
+    printf("matrix math happened\n");
+
+    for (int i = 0; i < num_images; i++){
+        float a = weights(i, 0);
+        float x = weights(i, 1);
+        float y = weights(i, 2);
+        float z = weights(i, 3);
+        float dist = sqrt(x*x + y*y + z*z);
+        //printf("image %d (%s): \t%f \t%f \t%f \t%f \t%f\n", i, imageFiles[i].c_str(), a, x/dist, y/dist, z/dist, dist);
+        //printf("%f \t%f \t%f\n", x/dist, y/dist, z/dist);
+
+        float incline = acos(z/dist)-3.14159/2.0;
+        float azimuth = atan(y/x);
+        printf("incline: %f \tazimuth: %f\n", incline, azimuth);
+
+
+        Mat img = Mat::zeros(h, w*2, CV_32F);
+        for (int j = 0; j < num_points; j++){
+            Point2f pt = Point2f(templateMesh[j].x, templateMesh[j].y);
+            double al = gsl_matrix_get(m_gsl_final_result, 0, j);
+            double nx = gsl_matrix_get(m_gsl_final_result, 1, j);
+            double ny = gsl_matrix_get(m_gsl_final_result, 2, j);
+            double nz = gsl_matrix_get(m_gsl_final_result, 3, j);
+
+            double c = gsl_matrix_get(m_gsl_images_orig, j, i);
+            double c2 = a*al + x*nx + y*ny + z*nz;
+            //printf("(%f, %f)    ", c, c2);
+
+            circle(img, Point2f(pt.x + 0*w, pt.y), 1, c, 0, 8, 0);
+            circle(img, Point2f(pt.x + 1*w, pt.y), 1, c2, 0, 8, 0);
+        }
+
+        //resize(img3, img3, Size(1000, 250));
+        imshow("relit face", img);
+        waitKey(0);
+    }
 
 }
 
