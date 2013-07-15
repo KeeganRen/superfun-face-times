@@ -25,6 +25,7 @@ public:
     void shapeStuff();
     void solveStuff();
 
+    void computeLightDistribution();
     void recoverDepth();
 
     void clip(int &a, int lo, int hi);
@@ -79,6 +80,7 @@ public:
 
     gsl_matrix *m_gsl_model;
     gsl_matrix *m_gsl_images;
+    gsl_matrix *m_gsl_images_orig;
     gsl_matrix *m_gsl_s;
     gsl_matrix *m_gsl_final_result;
 };
