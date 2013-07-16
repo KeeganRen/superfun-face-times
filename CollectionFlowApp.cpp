@@ -312,8 +312,8 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    int ranks[] = {4, 5, 6};
-    int len = 3;
+    int ranks[] = {4, 5, 5, 6};
+    int len = 4;
 
     for (int r = 0; r < len; r++){
         int k = ranks[r];
