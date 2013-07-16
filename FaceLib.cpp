@@ -45,7 +45,9 @@ void FaceLib::gslVecToMatWithBorder(gsl_vector *orig, Mat &im, int d, int w, int
     if (d == 1){
         Mat m(w, h, CV_64F, vec->data);
         Mat m_border(w + borderSize*2, h + borderSize*2, CV_64F, -1);
-        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        //m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        Mat dst_roi = m_border(Rect(borderSize, borderSize, h, w));
+        m.copyTo(dst_roi);
         im = m_border;
     }
     if (d == 3){
@@ -58,7 +60,9 @@ void FaceLib::gslVecToMatWithBorder(gsl_vector *orig, Mat &im, int d, int w, int
             }
         }
 
-        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        //m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        Mat dst_roi = m_border(Rect(borderSize, borderSize, h, w));
+        m.copyTo(dst_roi);
         im = m_border;
     }
 }
@@ -95,7 +99,9 @@ Mat FaceLib::addBorder(Mat im){
         }
     }
 
-    m.copyTo(m_border(Rect(borderSize, borderSize, w, h)));
+    //m.copyTo(m_border(Rect(borderSize, borderSize, w, h)));
+    Mat dst_roi = m_border(Rect(borderSize, borderSize, w, h));
+    m.copyTo(dst_roi);
 
     return m_border;
 }
@@ -127,6 +133,7 @@ void FaceLib::saveAs(char* filename, Mat m){
 }
 
 Mat FaceLib::computeFlowAndWarp(Mat &face2, Mat &face1){
+    printf("[computeFlowAndWarp]\n");
     Mat vx, vy, warp;
             
     Mat face1_border = addBorder(face1);

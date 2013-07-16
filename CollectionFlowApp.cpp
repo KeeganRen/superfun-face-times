@@ -142,12 +142,13 @@ void CollectionFlowApp::findImageSizeFromFirstImage(){
 void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
     for (int i = 0; i < faceList.size(); i++){
-        Mat img = cvLoadImage(faceList[i].c_str(), CV_LOAD_IMAGE_COLOR);
-        if (gray){
-            cvtColor(img, img, CV_BGR2GRAY);
-        }
-        img.convertTo(img, CV_64FC3, 1.0/255, 0);
+        printf("opening image %d: %s\n", i, faceList[i].c_str());
+        Mat img = imread(faceList[i].c_str());
         if (img.data != NULL){
+            if (gray){
+                cvtColor(img, img, CV_BGR2GRAY);
+            }
+            img.convertTo(img, CV_64FC3, 1.0/255, 0);
             faceImages.push_back(img);
         }
         else {
@@ -205,7 +206,9 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
     if (d == 1){
         Mat m(w, h, CV_64F, vec->data);
         Mat m_border(w + borderSize*2, h + borderSize*2, CV_64F, -1);
-        copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        //m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        Mat dst_roi = m_border(Rect(borderSize, borderSize, h, w));
+        m.copyTo(dst_roi);
         im = m_border;
     }
     if (d == 3){
@@ -218,7 +221,9 @@ void CollectionFlowApp::gslVecToMatWithBorder(gsl_vector *orig, Mat &im){
             }
         }
 
-        m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
+        Mat dst_roi = m_border(Rect(borderSize, borderSize, h, w));
+        m.copyTo(dst_roi);
+        //m.copyTo(m_border(Rect(borderSize, borderSize, h, w)));
         im = m_border;
     }
 }
