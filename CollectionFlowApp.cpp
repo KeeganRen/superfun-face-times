@@ -307,7 +307,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    int ranks[] = {4, 5};
+    int ranks[] = {4, 5, 6};
     int len = 2;
 
     for (int r = 0; r < len; r++){
@@ -418,6 +418,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
                 gsl_vector_add(&col.vector, m_gsl_mean);
             }
+        }
+
+        if (r == len-1){
+            printf("dont do flow for last step...\n");
+            break;
         }
 
         // try visualizing faces in lower space

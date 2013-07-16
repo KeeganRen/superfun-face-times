@@ -439,7 +439,7 @@ void Shape3DApp::shapeStuff(){
         imshow("zx and zy", img3);
     }   
     
-    computeLightDistribution();
+    //computeLightDistribution();
 
 
     recoverDepth();
@@ -551,7 +551,7 @@ void Shape3DApp::computeLightDistribution(){
         printf("incline: %f \tazimuth: %f\n", incline, azimuth);
 
 
-        Mat img = Mat::zeros(h, w*2, CV_32F);
+        Mat img = Mat::zeros(h, w*4, CV_32F);
         for (int j = 0; j < num_points; j++){
             Point2f pt = Point2f(templateMesh[j].x, templateMesh[j].y);
             double al = gsl_matrix_get(m_gsl_final_result, 0, j);
@@ -563,8 +563,18 @@ void Shape3DApp::computeLightDistribution(){
             double c2 = a*al + x*nx + y*ny + z*nz;
             //printf("(%f, %f)    ", c, c2);
 
+            double c3 = a*al;
+
+            double ratio = c3/c2;
+            if (ratio > 2.0){
+                ratio = 2.0;
+            }
+            double c4 = c*ratio;
+
             circle(img, Point2f(pt.x + 0*w, pt.y), 1, c, 0, 8, 0);
             circle(img, Point2f(pt.x + 1*w, pt.y), 1, c2, 0, 8, 0);
+            circle(img, Point2f(pt.x + 2*w, pt.y), 1, c3, 0, 8, 0);
+            circle(img, Point2f(pt.x + 3*w, pt.y), 1, c4, 0, 8, 0);
         }
 
         //resize(img3, img3, Size(1000, 250));

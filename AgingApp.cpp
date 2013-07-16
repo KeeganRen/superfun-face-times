@@ -64,7 +64,7 @@ void AgingApp::init(){
     char faceFile[256];
     sprintf(faceFile, "%simages/%d_mask2.jpg", data_path, face_id);
     printf("faceFile: %s\n", faceFile);
-    face = cvLoadImage(faceFile, CV_LOAD_IMAGE_COLOR);
+    face = imread(faceFile, CV_LOAD_IMAGE_COLOR);
     face.convertTo(face, CV_64FC3, 1.0/255, 0);
     w = face.rows;
     h = face.cols;
