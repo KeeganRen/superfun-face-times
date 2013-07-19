@@ -36,6 +36,7 @@ void PrintUsage()
             "   \t--templateMesh <file> [template 3D point cloud]\n" \
             "   \t--output <file> [json 3d object to save warped face to]\n" \
             "   \t--ply <file> [ply file to save warped face to]\n" \
+            "   \t--relightDir <path> [directory to save relit images into]\n" \
             "   \t--visualize [if you want to see images of the progress]\n" \
             "\n");
 }
@@ -49,6 +50,7 @@ void Shape3DApp::processOptions(int argc, char **argv){
             {"input",           1, 0, 406},
             {"visualize",       0, 0, 407},
             {"ply",             1, 0, 408},
+            {"relightDir",      1, 0, 409},
             {0,0,0,0} 
         };
 
@@ -86,6 +88,11 @@ void Shape3DApp::processOptions(int argc, char **argv){
                 outFacePly = optarg;
                 break;
 
+            case 409:
+                relightDir = optarg;
+                break;
+
+
             default: 
                 printf("Unrecognized option %d\n", c);
                 break;
@@ -98,6 +105,7 @@ void Shape3DApp::init(){
     useList = false;
     visualize = false;
     outFacePly = NULL;
+    relightDir = NULL;
 
     if (argc < 2 ){
         PrintUsage();
@@ -318,7 +326,7 @@ void Shape3DApp::populateImageMatrix(){
             }
 
             imshow("loaded face", drawable);
-            waitKey(100);
+            waitKey(50);
         }
     }   
 
@@ -344,23 +352,45 @@ void Shape3DApp::shapeStuff(){
     }
 
     gsl_vector *S = gsl_vector_calloc(num_images);
-    gsl_matrix *V = gsl_matrix_calloc(num_images, num_images);
+    m_gsl_V = gsl_matrix_calloc(num_images, num_images);
     gsl_vector *work = gsl_vector_calloc(num_images);
 
     printf("[shapeStuff] computing SVD!\n");
 
-    int res = gsl_linalg_SV_decomp(m_gsl_images, V, S, work);
+    int res = gsl_linalg_SV_decomp(m_gsl_images, m_gsl_V, S, work);
 
     printf("[shapeStuff] SVD computed, result: %d\n", res);
 
     gsl_matrix *m_gsl_rank4 = gsl_matrix_calloc(4, num_points);
 
+    // scale m_gsl_images by S because then m_gsl_images will hold all the eigenfaces
+    // i think... double check that SV_decomp
+
+    for (int i = 0; i < num_images; i++){
+        gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
+        gsl_vector_scale(&col.vector, gsl_vector_get(S, i));
+    }
+
+    gsl_matrix *test = gsl_matrix_calloc(num_points, num_images);
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_images, m_gsl_V, 0.0, test);
+
+    if (visualize){
+        for (int i = 0; i < num_images; i++){
+            Mat img0 = Mat::zeros(h, w, CV_32F);
+            for (int p = 0; p < num_points; p++){
+                Point2f pt = Point2f(templateMesh[p].x, templateMesh[p].y);
+                double val = gsl_matrix_get(test, p, i);
+                circle(img0, Point2f(pt.x, pt.y), 1, val, 0, 8, 0);
+            }
+            imshow("TEST...", img0);
+            //waitKey(0);
+        }
+    } 
 
     for (int i = 0; i < 4; i++){
         gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
         gsl_vector_view vec_work = gsl_matrix_row(m_gsl_s, i);
         gsl_vector_memcpy(&vec_work.vector, &col.vector);
-        gsl_vector_scale(&vec_work.vector, gsl_vector_get(S, i));
     }
 
 
@@ -439,7 +469,9 @@ void Shape3DApp::shapeStuff(){
         imshow("zx and zy", img3);
     }   
     
+    relightToFirstImage();
     //computeLightDistribution();
+
 
 
     recoverDepth();
@@ -508,6 +540,127 @@ void Shape3DApp::solveStuff(){
 
 }
 
+void Shape3DApp::relightToFirstImage(){
+    printf("[relightToFirstImage] but actually relight to all images\n");
+
+    if (relightDir == NULL){
+        printf("dont actually want to relight... no where to save\n");
+        return;
+    }
+
+    // imgs = weights*basis (solve for weights) 
+    // basis should be [albedo, nx, ny, nz]
+
+    MatrixXd imgs(num_images,num_points);
+    MatrixXd weights(num_images,4);
+    MatrixXd basis(4,num_points);
+
+    for (int i = 0; i < num_images; i++){
+        for (int j = 0; j < num_points; j++){
+            imgs(i, j) = gsl_matrix_get(m_gsl_images_orig, j, i);
+        }
+    }
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < num_points; j++){
+            basis(i, j) = gsl_matrix_get(m_gsl_final_result, i, j);
+        }
+    }
+
+    MatrixXd bbt(4,4);
+    bbt = basis * basis.transpose();
+    weights = imgs * basis.transpose() * bbt.inverse();
+
+    printf("matrix math happened\n");
+
+    gsl_matrix *eigenface_copy = gsl_matrix_calloc(num_points, num_images);
+    gsl_matrix *eigenvalue_copy = gsl_matrix_calloc(num_images, num_images);
+    gsl_matrix_memcpy(eigenface_copy, m_gsl_images);
+    gsl_matrix_memcpy(eigenvalue_copy, m_gsl_V);
+
+    printf("matrices copied\n");
+
+    for (int targetFace = 0; targetFace < num_images; targetFace++){
+        printf("Relighting to target face %d\n", targetFace);
+        gsl_matrix_memcpy(m_gsl_images, eigenface_copy);
+        gsl_matrix_memcpy(m_gsl_V, eigenvalue_copy);
+
+        float a0 = weights(targetFace, 0);
+        float x0 = weights(targetFace, 1);
+        float y0 = weights(targetFace, 2);
+        float z0 = weights(targetFace, 3);
+
+        // images = eigenfaces * weights
+        // want to replace top 4 eigenfaces with new things
+        // and copy top 4 weights from image 0
+
+        
+        for (int i = 0; i < 4; i++){
+            gsl_vector_view col = gsl_matrix_column(m_gsl_images, i);
+            for (int p = 0; p < num_points; p++){
+                gsl_vector_set(&col.vector, p, gsl_matrix_get(m_gsl_final_result, i, p));
+            }
+
+
+        }
+
+        for (int i = 0; i < 4; i++){
+            gsl_vector_view row = gsl_matrix_column(m_gsl_V, i);
+            for (int j = 0; j < num_images; j++){
+                gsl_vector_set(&row.vector, j, weights(targetFace,i));
+            }
+        }
+
+        gsl_vector_view row = gsl_matrix_column(m_gsl_V, 0);
+        for (int j = 0; j < num_images; j++){
+            gsl_vector_set(&row.vector, j, weights(j,0));
+        }
+        
+
+        gsl_matrix *relit_images = gsl_matrix_calloc(num_points, num_images);
+        gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_images, m_gsl_V, 0.0, relit_images);
+
+        if (visualize){
+            for (int i = 0; i < num_images; i++){
+                Mat img0 = Mat::zeros(h, w*2, CV_32F);
+                for (int p = 0; p < num_points; p++){
+                    Point2f pt = Point2f(templateMesh[p].x, templateMesh[p].y);
+                    double val = gsl_matrix_get(relit_images, p, i);
+                    circle(img0, Point2f(pt.x, pt.y), 1, val, 0, 8, 0);
+
+                    double orig_val = gsl_matrix_get(m_gsl_images_orig, p, i);
+                    circle(img0, Point2f(pt.x + w, pt.y), 1, orig_val, 0, 8, 0);
+                }
+                imshow("relit...", img0);
+                waitKey(100);
+            }
+        } 
+
+        for (int i = 0; i < num_images; i++){
+            Mat img = Mat::zeros(h, w, CV_32F);
+            for (int p = 0; p < num_points; p++){
+                Point2f pt = Point2f(templateMesh[p].x, templateMesh[p].y);
+                double val = gsl_matrix_get(relit_images, p, i);
+                circle(img, Point2f(pt.x, pt.y), 1, val, 0, 8, 0);
+            }
+
+            char filename[256];
+            sprintf(filename, "%s/lighting%dface%d.jpg", relightDir, targetFace, i);
+            printf("\tsaving %s\n", filename);
+            if (img.type() == CV_8UC3){
+                imwrite(filename, img);
+            }
+            else {
+                Mat rightFormat;
+                img.convertTo(rightFormat, CV_8UC3, 1.0*255, 0);
+                imwrite(filename, rightFormat);
+            }
+            
+        }
+    }
+
+}
+
 void Shape3DApp::computeLightDistribution(){
     printf("[computeLightDistribution]\n");
     MatrixXd imgs(num_images,num_points);
@@ -537,11 +690,19 @@ void Shape3DApp::computeLightDistribution(){
 
     printf("matrix math happened\n");
 
+    float a0 = weights(0, 0);
+    float x0 = weights(0, 1);
+    float y0 = weights(0, 2);
+    float z0 = weights(0, 3);
+    float dist0 = sqrt(x0*x0 + y0*y0 + z0*z0);
+
+    double diffuse = 1.0;
+
     for (int i = 0; i < num_images; i++){
         float a = weights(i, 0);
         float x = weights(i, 1);
         float y = weights(i, 2);
-        float z = weights(i, 3);
+        float z = weights(i, 3)*-1;
         float dist = sqrt(x*x + y*y + z*z);
         //printf("image %d (%s): \t%f \t%f \t%f \t%f \t%f\n", i, imageFiles[i].c_str(), a, x/dist, y/dist, z/dist, dist);
         //printf("%f \t%f \t%f\n", x/dist, y/dist, z/dist);
@@ -549,6 +710,30 @@ void Shape3DApp::computeLightDistribution(){
         float incline = acos(z/dist)-3.14159/2.0;
         float azimuth = atan(y/x);
         printf("incline: %f \tazimuth: %f\n", incline, azimuth);
+
+        //Mat relitImg = imread(imageFiles[i].c_str());
+        //cvtColor(relitImg,relitImg,CV_BGR2HSV);
+        //relitImg.convertTo(relitImg, CV_64FC3, 1.0/255, 0);
+
+        double avg_diffuse = 0;
+
+        for (int j = 0; j < num_points; j++){
+            Point2f pt = Point2f(templateMesh[j].x, templateMesh[j].y);
+            double al = gsl_matrix_get(m_gsl_final_result, 0, j);
+            double nx = gsl_matrix_get(m_gsl_final_result, 1, j);
+            double ny = gsl_matrix_get(m_gsl_final_result, 2, j);
+            double nz = gsl_matrix_get(m_gsl_final_result, 3, j);
+
+            double orig_color = gsl_matrix_get(m_gsl_images_orig, j, i);
+            double light_sim = (x*nx + y*ny + z*nz)/dist/sqrt(nx*nx+ny*ny+nz*nz);
+
+            double diffuse = (orig_color - al) / light_sim;
+            avg_diffuse += diffuse;
+            printf("%f ", diffuse);
+
+        } 
+        avg_diffuse /= float(num_points);
+        printf("\n\n avg diffuse: %f\n\n", avg_diffuse);
 
 
         Mat img = Mat::zeros(h, w*4, CV_32F);
@@ -559,26 +744,37 @@ void Shape3DApp::computeLightDistribution(){
             double ny = gsl_matrix_get(m_gsl_final_result, 2, j);
             double nz = gsl_matrix_get(m_gsl_final_result, 3, j);
 
-            double c = gsl_matrix_get(m_gsl_images_orig, j, i);
-            double c2 = a*al + x*nx + y*ny + z*nz;
-            //printf("(%f, %f)    ", c, c2);
+            double orig_color = gsl_matrix_get(m_gsl_images_orig, j, i);
+            double light_sim = (x*nx + y*ny + z*nz)/dist/sqrt(nx*nx+ny*ny+nz*nz);
 
-            double c3 = a*al;
 
-            double ratio = c3/c2;
-            if (ratio > 2.0){
-                ratio = 2.0;
-            }
-            double c4 = c*ratio;
 
-            circle(img, Point2f(pt.x + 0*w, pt.y), 1, c, 0, 8, 0);
-            circle(img, Point2f(pt.x + 1*w, pt.y), 1, c2, 0, 8, 0);
-            circle(img, Point2f(pt.x + 2*w, pt.y), 1, c3, 0, 8, 0);
-            circle(img, Point2f(pt.x + 3*w, pt.y), 1, c4, 0, 8, 0);
+
+            double target_light_sim = (x0*nx + y0*ny + z0*nz)/dist0;
+
+          
+
+            double ratio = target_light_sim/light_sim;
+
+            light_sim*=diffuse;
+
+
+            double unlit = orig_color - light_sim*avg_diffuse;
+
+            //relitImg.at<Vec3d>(pt.y, pt.x)[2]*=ratio/ratio_0;
+           
+            circle(img, Point2f(pt.x + 0*w, pt.y), 1, orig_color, 0, 8, 0);
+            circle(img, Point2f(pt.x + 1*w, pt.y), 1, light_sim, 0, 8, 0);
+            circle(img, Point2f(pt.x + 2*w, pt.y), 1, al, 0, 8, 0);
+            circle(img, Point2f(pt.x + 3*w, pt.y), 1, unlit, 0, 8, 0);
         }
 
+        //relitImg.convertTo(relitImg, CV_8UC3, 1.0*255, 0);
+        //cvtColor(relitImg,relitImg,CV_HSV2BGR);
+        //imshow("relit color", relitImg);
+
         //resize(img3, img3, Size(1000, 250));
-        imshow("relit face", img);
+        imshow("[orig face] [simulated light]", img);
         waitKey(0);
     }
 

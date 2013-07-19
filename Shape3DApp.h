@@ -25,6 +25,7 @@ public:
     void shapeStuff();
     void solveStuff();
 
+    void relightToFirstImage();
     void computeLightDistribution();
     void recoverDepth();
 
@@ -50,6 +51,7 @@ public:
     char outFaceFile[1024];
     char *outFacePly;
     char listFile[1024];
+    char *relightDir;
     bool useList;
 
     bool visualize;
@@ -83,4 +85,5 @@ public:
     gsl_matrix *m_gsl_images_orig;
     gsl_matrix *m_gsl_s;
     gsl_matrix *m_gsl_final_result;
+    gsl_matrix *m_gsl_V;
 };
