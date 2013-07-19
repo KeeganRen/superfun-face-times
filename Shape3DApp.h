@@ -14,6 +14,7 @@ public:
     void processOptions(int argc, char **argv);
     void init();
     void loadImageList();
+    int faceFileName(int i);
     void loadTemplateFiles();
     void loadFaceSpecificFiles();
     void getColorFromImage();

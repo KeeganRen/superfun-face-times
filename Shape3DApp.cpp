@@ -117,6 +117,7 @@ void Shape3DApp::init(){
     loadTemplateFiles();
     loadImageList();
 
+    printf("skdfjsdlf %s\n", imageFiles[0].c_str());
 
     setupShapeStuff();
     populateTemplateMatrix();
@@ -129,6 +130,14 @@ void Shape3DApp::init(){
     populateImageMatrix();
     shapeStuff();
 
+}
+
+int Shape3DApp::faceFileName(int i){
+    string filename = imageFiles[i];
+    int idx1 = filename.rfind("/");
+    int idx2 = filename.rfind("w"); // pretty specific to this app.. looking for the faceid #
+    string sub = filename.substr(idx1+1, idx2-idx1-1);
+    return atoi(sub.c_str());
 }
 
 void Shape3DApp::testIntegrability(){
@@ -645,7 +654,9 @@ void Shape3DApp::relightToFirstImage(){
             }
 
             char filename[256];
-            sprintf(filename, "%s/lighting%dface%d.jpg", relightDir, targetFace, i);
+            int f1 = faceFileName(targetFace);
+            int f2 = faceFileName(i);
+            sprintf(filename, "%s/lighting%dface%d.jpg", relightDir, f1, f2);
             printf("\tsaving %s\n", filename);
             if (img.type() == CV_8UC3){
                 imwrite(filename, img);
