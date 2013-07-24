@@ -141,6 +141,16 @@ void CollectionFlowApp::findImageSizeFromFirstImage(){
 
 void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
+
+    double gamma = 2.2;
+    double inverse_gamma = 1.0 / gamma;
+
+    Mat lut_matrix(1, 256, CV_8UC1 );
+    uchar * ptr = lut_matrix.ptr();
+    for( int i = 0; i < 256; i++ )
+    ptr[i] = (int)( pow( (double) i / 255.0, inverse_gamma ) * 255.0 );
+
+
     for (int i = 0; i < faceList.size(); i++){
         printf("opening image %d: %s\n", i, faceList[i].c_str());
         Mat img = imread(faceList[i].c_str());
@@ -148,8 +158,14 @@ void CollectionFlowApp::openImages(){
             if (gray){
                 cvtColor(img, img, CV_BGR2GRAY);
             }
-            img.convertTo(img, CV_64FC3, 1.0/255, 0);
-            faceImages.push_back(img);
+
+            // gamma correction
+            Mat result;
+            LUT( img, lut_matrix, result );
+
+            result.convertTo(result, CV_64FC3, 1.0/255, 0);
+            
+            faceImages.push_back(result);
         }
         else {
             printf("Error loading image %s\n", faceList[i].c_str());
