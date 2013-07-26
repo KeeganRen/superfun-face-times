@@ -631,17 +631,20 @@ void Shape3DApp::relightToFirstImage(){
 
         if (visualize){
             for (int i = 0; i < num_images; i++){
-                Mat img0 = Mat::zeros(h, w*2, CV_32F);
+                Mat img0 = Mat::zeros(h, w*3, CV_32F);
                 for (int p = 0; p < num_points; p++){
                     Point2f pt = Point2f(templateMesh[p].x, templateMesh[p].y);
                     double val = gsl_matrix_get(relit_images, p, i);
-                    circle(img0, Point2f(pt.x, pt.y), 1, val, 0, 8, 0);
+                    circle(img0, Point2f(pt.x + w, pt.y), 1, val, 0, 8, 0);
 
                     double orig_val = gsl_matrix_get(m_gsl_images_orig, p, i);
-                    circle(img0, Point2f(pt.x + w, pt.y), 1, orig_val, 0, 8, 0);
+                    circle(img0, Point2f(pt.x, pt.y), 1, orig_val, 0, 8, 0);
+
+                    double target_val = gsl_matrix_get(m_gsl_images_orig, p, targetFace);
+                    circle(img0, Point2f(pt.x + w*2, pt.y), 1, target_val, 0, 8, 0);
                 }
                 imshow("relit...", img0);
-                waitKey(100);
+                waitKey(0);
             }
         } 
 

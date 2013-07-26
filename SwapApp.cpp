@@ -30,7 +30,7 @@ void error(char *msg) {
 void PrintUsage() 
 {
     printf("Usage:  \n" \
-            "   \t<full face A> <full face B> <A landmarks> <B landmarks>\n" \
+            "   \t<full face A> <full face B> <A landmarks> <B landmarks> <output dir>\n" \
             "\n");
 }
 

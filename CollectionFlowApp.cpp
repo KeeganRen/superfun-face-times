@@ -142,7 +142,7 @@ void CollectionFlowApp::findImageSizeFromFirstImage(){
 void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
 
-    double gamma = 2.2;
+    double gamma = 1.8;
     double inverse_gamma = 1.0 / gamma;
 
     Mat lut_matrix(1, 256, CV_8UC1 );
@@ -162,6 +162,7 @@ void CollectionFlowApp::openImages(){
             // gamma correction
             Mat result;
             LUT( img, lut_matrix, result );
+
 
             result.convertTo(result, CV_64FC3, 1.0/255, 0);
             
@@ -328,8 +329,8 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
     printf("[buildMatrixAndRunPca] Matrix populated\n");
 
-    int ranks[] = {4, 5, 5, 6};
-    int len = 4;
+    int ranks[] = {4, 5, 5};
+    int len = 3;
 
     for (int r = 0; r < len; r++){
         int k = ranks[r];
