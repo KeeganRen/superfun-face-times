@@ -30,7 +30,7 @@ void error(char *msg) {
 void PrintUsage() 
 {
     printf("Usage:  \n" \
-            "   \t<full face A> <full face B> <A landmarks> <B landmarks> <output dir>\n" \
+            "   \t<full face A> <full face B> <A landmarks> <B landmarks> <cluster dir> <output dir>\n" \
             "\n");
 }
 
@@ -47,6 +47,7 @@ void SwapApp::init(){
     char *landmarkAFile = argv[3];
     char *landmarkBFile = argv[4];
     char *clusterPath = argv[5];
+    outPath = argv[6];
 
     load(faceAFile, faceBFile, landmarkAFile, landmarkBFile, clusterPath);
 
@@ -105,10 +106,10 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     FaceLib::loadFiducialPoints(landmarkAFile, landmarkA);
     FaceLib::loadFiducialPoints(landmarkBFile, landmarkB);
 
-    string templateFaceFile = "model/grid-igor-canonical2d.txt";
+    string templateFaceFile = "data/grid-igor-canonical2d.txt";
     FaceLib::loadFiducialPoints(templateFaceFile, templatePoints2D);
 
-    string maskImagefile = "model/igormask.png";
+    string maskImagefile = "data/igormask.png";
     maskImage = imread(maskImagefile);
 
     char meanfaceFile[256];
@@ -215,6 +216,9 @@ void SwapApp::swap(){
     // A_mask
     // transformed
     BBlendedToA = FaceLib::montage(transformed, A, A_mask);
+    char filename[256];
+    sprintf(filename, "%s/swap_a.jpg", outPath);
+    FaceLib::saveAs(filename, BBlendedToA);
 }
 
 void SwapApp::animateBlend(){
@@ -253,9 +257,9 @@ void SwapApp::animateBlend(){
             }
         }
         cout << "ALPHA " << alpha << endl;
-        imshow("transform", img);
+        //imshow("transform", img);
         char filename[256];
-        sprintf(filename, "swaparoo%.02f.jpg", alpha);
+        sprintf(filename, "%s/swaparoo%.02f.jpg", outPath, alpha);
         FaceLib::saveAs(filename, img);
         //waitKey(0);
     }

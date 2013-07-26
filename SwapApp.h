@@ -24,6 +24,7 @@ public:
 
     int argc;
     char **argv;
+    char *outPath;
 
     Mat A, B, A_mask, B_mask;
     Mat BBlendedToA;
