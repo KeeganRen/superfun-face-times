@@ -27,7 +27,7 @@ public:
     char *outPath;
 
     Mat A, B, A_mask, B_mask;
-    Mat BBlendedToA;
+    Mat BBlendedToA, ABlendedToB;
     vector<Point2f> landmarkA;
     vector<Point2f> landmarkB;
 

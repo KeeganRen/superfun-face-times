@@ -206,19 +206,36 @@ void SwapApp::swap(){
     }
  
     Mat transformed = Mat::zeros(A.rows, A.cols, A.type() );
-    
     warpAffine(B, transformed, xxx, transformed.size());
-
     BBlendedToA = Mat::zeros(A.rows, A.cols, A.type() );
     transformed.copyTo(BBlendedToA, A_mask);
-
-    // A
-    // A_mask
-    // transformed
     BBlendedToA = FaceLib::montage(transformed, A, A_mask);
+    
+
+
+    Mat inverseXXX;
+    invertAffineTransform(xxx, inverseXXX);
+    Mat transformedB = Mat::zeros(B.rows, B.cols, B.type() );
+    warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    ABlendedToB = Mat::zeros(B.rows, B.cols, B.type() );
+    transformedB.copyTo(ABlendedToB, B_mask);
+    ABlendedToB = FaceLib::montage(transformedB, B, B_mask);
+
+
+    /*
+    imshow("b blended to A", BBlendedToA);
+    imshow("a blended to b", ABlendedToB);
+    waitKey(0);
+    */
+
     char filename[256];
     sprintf(filename, "%s/swap_a.jpg", outPath);
     FaceLib::saveAs(filename, BBlendedToA);
+
+    char filename2[256];
+    sprintf(filename2, "%s/swap_b.jpg", outPath);
+    FaceLib::saveAs(filename2, ABlendedToB);
+
 }
 
 void SwapApp::animateBlend(){
