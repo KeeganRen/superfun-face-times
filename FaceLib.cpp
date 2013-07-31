@@ -200,7 +200,7 @@ void FaceLib::loadFiducialPoints(string file, std::vector<cv::Point2f> &point_ve
     FILE *f1 = fopen(file.c_str(), "r");
     
     if (!f1){
-        printf("couldn't open fiducial point file\n");
+        printf("couldn't open fiducial point file [%s]\n", file.c_str());
         exit(0);
     }
     
