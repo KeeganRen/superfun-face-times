@@ -62,6 +62,7 @@ void SwapApp::init(){
 
     swap();
 
+    /*
 
     Mat A_cropped = makeCroppedFaceMask(A, A_xform);
     gsl_vector *A_gsl = gsl_vector_calloc(num_pixels);
@@ -88,6 +89,7 @@ void SwapApp::init(){
 
     animateBlend();
 
+    */
 }
 
 void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *landmarkBFile, char* clusterPath){
