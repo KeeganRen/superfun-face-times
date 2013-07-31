@@ -101,6 +101,15 @@ void MorphApp::computeFlow(){
 
     if (visualize) imshow("flow_out", CVOpticalFlow::showFlow(out_x, out_y));
 
+    char new_filename[512];
+    sprintf(new_filename, "%s_flow.png", out_file);
+
+    Mat composedFlow = CVOpticalFlow::showFlow(out_x, out_y);
+    Mat new_m = Mat(composedFlow.size(), CV_8UC3);
+    composedFlow.convertTo(new_m, CV_8UC3, 1.0*255, 0);
+    imwrite(new_filename, new_m);
+
+
     Mat vx_ad, vy_ad, warp_ad;
     
     /*
