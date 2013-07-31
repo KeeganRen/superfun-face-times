@@ -340,12 +340,13 @@ Mat FaceLib::montage (Mat &srcImage, Mat &destImage, Mat &maskImage) {
   printf("destPoints size=%d\n", (int)destPoints.size());
   printf("constants size=%d\n", (int)constants.size());
 
-  Mat final(destImage.cols, destImage.rows, CV_64FC3);
+  Mat final(destImage.rows, destImage.cols, CV_64FC3);
   
   for (int x=0; x<destImage.cols; x++) 
     for (int y=0; y<destImage.rows; y++) 
         final.at<Vec3d>(y,x) = destImage.at<Vec3d>(y,x);
-  
+    
+
   // ヤコビ法で連立一次方程式を解く
   // "I solve a system of linear equations in the Jacobi method"
   for (int loop=0; loop<MAX_ITERATION; loop++) {
