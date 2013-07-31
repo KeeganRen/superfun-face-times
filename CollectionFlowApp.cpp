@@ -159,12 +159,16 @@ void CollectionFlowApp::openImages(){
                 cvtColor(img, img, CV_BGR2GRAY);
             }
 
-            // gamma correction
             Mat result;
-            LUT( img, lut_matrix, result );
 
-
-            result.convertTo(result, CV_64FC3, 1.0/255, 0);
+            if (0){
+                // gamma correction
+                LUT( img, lut_matrix, result );
+                result.convertTo(result, CV_64FC3, 1.0/255, 0);
+            }
+            else {
+                img.convertTo(result, CV_64FC3, 1.0/255, 0);
+            }
             
             faceImages.push_back(result);
         }

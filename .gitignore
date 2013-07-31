@@ -1,2 +1,17 @@
 *.o
 *.jpg
+agingDemo
+alignFace
+cfout*
+collectionFlow
+detectFaces
+*.txt
+*.ply
+*.gif
+xCluster
+shape3D
+swapFace
+starterApp
+*.ai
+incrementalCFlow
+eigenface
