@@ -10,7 +10,7 @@ class AverageFaces
 {
 public:
     void init();
-    void loadAndMakeAverage(char *file_list, char *output_image);
+    void loadAndMakeAverage(char *file_list, char *output_image, char* output_vid_file);
 
     int argc;
     char **argv;

@@ -14,6 +14,8 @@
 #include <istream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/highgui/highgui.hpp>  // Video write
+
 
 using namespace std;
 using namespace cv;
@@ -41,13 +43,17 @@ void AverageFaces::init(){
 
     char* file_list = argv[1];
     char* output_image = argv[2];
+    char* output_vid_file = NULL;
+    if (argc >= 4){
+        output_vid_file = argv[3];
+    }
 
     printf("file list: [%s], output image: [%s]\n", file_list, output_image);
 
-    loadAndMakeAverage(file_list, output_image);
+    loadAndMakeAverage(file_list, output_image, output_vid_file);
 }
 
-void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image){
+void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image, char* output_vid_file){
     printf("[loadAndMakeAverage] loading things\n");
     //a = imread(a_file);
     //a.convertTo(a, CV_64FC3, 1.0/255, 0);
@@ -66,8 +72,17 @@ void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image){
         perror (file_list);
     }
 
+
     Mat final_blend = imread(imageFiles[0].c_str(), CV_LOAD_IMAGE_COLOR);
     final_blend.convertTo(final_blend, CV_64FC3, 1.0/255, 0);
+
+    Mat convert_holder;
+    VideoWriter outputVideo;
+
+    if (output_vid_file){
+        convert_holder = imread(imageFiles[0].c_str(), CV_LOAD_IMAGE_COLOR);
+        outputVideo.open(output_vid_file, CV_FOURCC('P','I','M','1'), 25, final_blend.size(), true);
+    }
 
     double alpha;
     double beta;
@@ -83,7 +98,12 @@ void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image){
         beta = (1 - alpha);
         
         addWeighted(im, alpha, final_blend, beta, 0.0, final_blend);
-
+        
+        if (output_vid_file){
+            final_blend.convertTo(convert_holder, CV_8UC3, 1.0*255, 0);
+            outputVideo << convert_holder;
+            outputVideo << convert_holder;
+        }
         //imshow("loaded image", im);
         //imshow("blended image", final_blend);
         //waitKey(80);
