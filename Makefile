@@ -9,6 +9,9 @@ INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/
 
 LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video 
 
+ANN_LIB = -L/Users/ktuite/Library/ann_1.1.2/lib
+ANN_INC = -I/Users/ktuite/Library/ann_1.1.2/include
+
 COLLECTIONFLOWFACE=collectionFlow
 COLLECTIONFLOWSOURCES=CollectionFlowApp.cpp
 
@@ -47,7 +50,10 @@ SWAPFACESOURCES=SwapApp.cpp
 AVGFACE=averageFaces
 AVGFACESOURCES=AverageFaces.cpp
 
-all: $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) $(MORPHFACE) $(SHAPEFACE) $(INCCFLOW) $(SWAPFACE) $(AVGFACE)
+PHOTOBIO=photoBio
+PHOTOBIOSOURCES=PhotoBio.cpp
+
+all: $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) $(MORPHFACE) $(SHAPEFACE) $(INCCFLOW) $(SWAPFACE) $(AVGFACE) $(PHOTOBIO)
 
 clean: 
 	rm -f *.o $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) $(MORPHFACE)
@@ -84,6 +90,9 @@ $(SWAPFACE): $(SWAPFACESOURCES) $(FACELIBOBJECTS) $(FLOWOBJECTS)
 
 $(AVGFACE):  $(AVGFACESOURCES)  
 	$(CC) $(INCDIR) $(LIBDIR) $(AVGFACESOURCES) -o $@ $(LIBS)
+
+$(PHOTOBIO):  $(PHOTOBIOSOURCES)  
+	$(CC) $(INCDIR) $(LIBDIR) $(ANN_LIB) $(ANN_INC) $(PHOTOBIOSOURCES) -o $@ $(LIBS) -lANN
 
 .cpp.o:
 	$(CC) $(FLOWFLAGS) $(INCDIR) $< -o $@ -c
