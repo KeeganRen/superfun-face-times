@@ -22,11 +22,15 @@ public:
     Point2f applyXform(Point2f pt, Mat &xform);
     Point2f applyInverseXform(Point2f pt, Mat &xform);
 
+    void matchHistograms();
+
+    void histogramFunTimes(Mat &A_cropped, Mat &B_cropped, Mat &A, Mat &B);
+
     int argc;
     char **argv;
     char *outPath;
 
-    Mat A, B, A_mask, B_mask;
+    Mat A, B, A_mask, B_mask, A_color_corrected, B_color_corrected;
     Mat BBlendedToA, ABlendedToB;
     vector<Point2f> landmarkA;
     vector<Point2f> landmarkB;
