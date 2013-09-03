@@ -131,9 +131,10 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     string templateFaceFile = "data/grid-igor-canonical2d.txt";
     FaceLib::loadFiducialPoints(templateFaceFile, templatePoints2D);
 
-    string maskImagefile = "data/igormask.png";
-    //string maskImagefile = "data/closemask.png";
+    //string maskImagefile = "data/igormask.png";
+    string maskImagefile = "data/igormaskcopy.png";
     maskImage = imread(maskImagefile);
+    cout << endl << "  mask type: " << maskImage.type() << endl;
 
     char meanfaceFile[256];
     sprintf(meanfaceFile, "%s/cflow/clustermean.jpg", clusterPath);
@@ -239,7 +240,7 @@ void SwapApp::swap(){
     Mat inverseXXX;
     invertAffineTransform(xxx, inverseXXX);
     Mat transformedB = Mat::zeros(B.rows, B.cols, B.type() );
-    warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
     ABlendedToB = Mat::zeros(B.rows, B.cols, B.type() );
     transformedB.copyTo(ABlendedToB, B_mask);
     ABlendedToB = FaceLib::montage(transformedB, B, B_mask);
@@ -609,7 +610,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_r_hist2.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
@@ -621,7 +622,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_g_hist2.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
@@ -633,7 +634,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_b_hist2.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
@@ -659,7 +660,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_r_hist.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
@@ -671,7 +672,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_g_hist.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
@@ -683,7 +684,7 @@ void SwapApp::matchHistograms(){
 
         for (int j = 0; j < histSize; j++){
             num_pixels_in_b = cdf_b_hist.at<float>(j);
-            if (num_pixels_in_b >= num_pixels_in_a){
+            if (num_pixels_in_b > num_pixels_in_a){
                 target_intensity = j;
                 break;
             }
