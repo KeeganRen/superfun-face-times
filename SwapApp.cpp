@@ -239,7 +239,8 @@ void SwapApp::swap(){
     Mat inverseXXX;
     invertAffineTransform(xxx, inverseXXX);
     Mat transformedB = Mat::zeros(B.rows, B.cols, B.type() );
-    warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    //warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
     ABlendedToB = Mat::zeros(B.rows, B.cols, B.type() );
     transformedB.copyTo(ABlendedToB, B_mask);
     ABlendedToB = FaceLib::montage(transformedB, B, B_mask);
