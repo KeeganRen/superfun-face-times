@@ -60,7 +60,27 @@ void SwapApp::init(){
     A_mask = makeFullFaceMask(A, A_xform);
     B_mask = makeFullFaceMask(B, B_xform);
 
+
+    matchHistograms();
+
     swap();
+
+    /*
+
+    Mat A_cropped = makeCroppedFaceMask(A, A_xform);
+    Mat B_cropped = makeCroppedFaceMask(B, B_xform);
+    imshow("a cropped", A_cropped);
+    imshow("b cropped", B_cropped);
+
+
+    A_cropped.convertTo(A_cropped, CV_8UC3, 1.0*255, 0);
+    B_cropped.convertTo(B_cropped, CV_8UC3, 1.0*255, 0);
+    A.convertTo(A, CV_8UC3, 1.0*255, 0);
+
+    histogramFunTimes(A_cropped, B_cropped, A, B);
+    */
+
+    //
 
     /*
 
@@ -112,6 +132,7 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     FaceLib::loadFiducialPoints(templateFaceFile, templatePoints2D);
 
     string maskImagefile = "data/igormask.png";
+    //string maskImagefile = "data/closemask.png";
     maskImage = imread(maskImagefile);
 
     char meanfaceFile[256];
@@ -208,7 +229,7 @@ void SwapApp::swap(){
     }
  
     Mat transformed = Mat::zeros(A.rows, A.cols, A.type() );
-    warpAffine(B, transformed, xxx, transformed.size());
+    warpAffine(B_color_corrected, transformed, xxx, transformed.size());
     BBlendedToA = Mat::zeros(A.rows, A.cols, A.type() );
     transformed.copyTo(BBlendedToA, A_mask);
     BBlendedToA = FaceLib::montage(transformed, A, A_mask);
@@ -302,6 +323,420 @@ Point2f SwapApp::applyInverseXform(Point2f pt, Mat &xform){
     float x =  px * xform.at<double>(1,1)/det - py*xform.at<double>(0,1)/det;
     float y =  -px * xform.at<double>(1,0)/det + py*xform.at<double>(0,0)/det;
     return Point2f(x,y);
+}
+
+
+void SwapApp::histogramFunTimes(Mat &A_cropped, Mat &B_cropped, Mat &A, Mat &B){
+    printf("histogram fun times!");
+
+    /// Separate the image in 3 places ( B, G and R )
+    vector<Mat> bgr_planes;
+    split( A_cropped, bgr_planes );
+
+    vector<Mat> A_split;
+    split( A, A_split );
+
+    vector<Mat> bgr_planes2;
+    split( B_cropped, bgr_planes2 );
+
+    /// Establish the number of bins
+    int histSize = 256;
+
+    /// Set the ranges ( for B,G,R) )
+    float range[] = { 0, 256 } ;
+    const float* histRange = { range };
+
+    bool uniform = true; bool accumulate = false;
+
+    Mat b_hist, g_hist, r_hist;
+    Mat b_hist2, g_hist2, r_hist2;
+
+    /// Compute the histograms:
+    calcHist( &bgr_planes[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, uniform, accumulate );
+
+    calcHist( &bgr_planes2[0], 1, 0, Mat(), b_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes2[1], 1, 0, Mat(), g_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes2[2], 1, 0, Mat(), r_hist2, 1, &histSize, &histRange, uniform, accumulate );
+
+    // todo: cdf 
+    Mat cdf_r_hist(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist(b_hist.size(), b_hist.type());
+    Mat cdf_r_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist2(b_hist.size(), b_hist.type());
+
+    for( int i = 0; i < histSize; i++ ){
+        if (i == 0){
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i));
+        }
+        else {
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i)) + cvRound(cdf_r_hist.at<float>(i-1));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i)) + cvRound(cdf_g_hist.at<float>(i-1));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i)) + cvRound(cdf_b_hist.at<float>(i-1));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i)) + cvRound(cdf_r_hist2.at<float>(i-1));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i)) + cvRound(cdf_g_hist2.at<float>(i-1));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i)) + cvRound(cdf_b_hist2.at<float>(i-1));
+        }
+    }
+
+    Mat M_r(b_hist.size(), CV_8U);
+    Mat M_g(b_hist.size(), CV_8U);
+    Mat M_b(b_hist.size(), CV_8U);
+
+    for( int i = 0; i < histSize; i++ ){
+        // i is a pixel intensity value
+        
+        int target_intensity = 0;
+        float num_pixels_in_a;
+        float num_pixels_in_b;
+
+        // r channel
+        num_pixels_in_a = cdf_r_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_r_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+
+        M_r.at<char>(i) = target_intensity;
+
+        // g channel
+        num_pixels_in_a = cdf_g_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_g_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+
+        M_g.at<char>(i) = target_intensity;
+
+        // b channel
+        num_pixels_in_a = cdf_b_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_b_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+
+        M_b.at<char>(i) = target_intensity;
+
+    }
+
+
+    Mat new_r(A.size(), CV_8U);
+    Mat new_g(A.size(), CV_8U);
+    Mat new_b(A.size(), CV_8U);
+
+    vector<Mat> new_face;
+
+
+    LUT( A_split[0], M_b, new_b );
+    LUT( A_split[1], M_g, new_g );
+    LUT( A_split[2], M_r, new_r );
+    
+    new_face.push_back(new_b);
+    new_face.push_back(new_g);
+    new_face.push_back(new_r);
+
+    Mat result;
+    merge(new_face, result);
+
+    imshow("B cropped ", B_cropped);
+    imshow("A cropped ", A_cropped);
+    
+    imshow("color corrected", result);
+    
+
+    waitKey(0);
+
+  /*
+  printf("before calc prob denisty\n\n\n");
+
+ cvtColor( A_cropped, A_cropped, CV_BGR2GRAY );
+
+  /// Apply Histogram Equalization
+  equalizeHist( A_cropped, A_cropped );
+  imshow("histogram equalized on A", A_cropped);
+  waitKey(0);
+
+  Mat result;
+  LUT( bgr_planes[0], b_hist, result );
+  imshow("lut result", result);
+  waitKey(0);
+
+  printf("after calc prob density\n");
+  */
+
+  // Draw the histograms for B, G and R
+  int hist_w = 512; int hist_h = 400;
+  int bin_w = cvRound( (double) hist_w/histSize );
+
+  Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
+
+  /// Normalize the result to [ 0, histImage.rows ]
+  normalize(b_hist, b_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+  normalize(g_hist, g_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+  normalize(r_hist, r_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+
+  /// Draw for each channel
+  for( int i = 1; i < histSize; i++ )
+  {
+      line( histImage, Point( bin_w*(i-1), hist_h - cvRound(b_hist.at<float>(i-1)) ) ,
+         Point( bin_w*(i), hist_h - cvRound(b_hist.at<float>(i)) ),
+         Scalar( 255, 0, 0), 2, 8, 0  );
+      line( histImage, Point( bin_w*(i-1), hist_h - cvRound(g_hist.at<float>(i-1)) ) ,
+         Point( bin_w*(i), hist_h - cvRound(g_hist.at<float>(i)) ),
+         Scalar( 0, 255, 0), 2, 8, 0  );
+      line( histImage, Point( bin_w*(i-1), hist_h - cvRound(r_hist.at<float>(i-1)) ) ,
+         Point( bin_w*(i), hist_h - cvRound(r_hist.at<float>(i)) ),
+         Scalar( 0, 0, 255), 2, 8, 0  );
+  }
+
+  /// Display
+  namedWindow("calcHist Demo", CV_WINDOW_AUTOSIZE );
+  imshow("calcHist Demo", histImage );
+
+
+}
+
+
+void SwapApp::matchHistograms(){
+    printf("matching histograms");
+
+    Mat A_cropped = makeCroppedFaceMask(A, A_xform);
+    Mat B_cropped = makeCroppedFaceMask(B, B_xform);
+    A_cropped.convertTo(A_cropped, CV_8UC3, 1.0*255, 0);
+    B_cropped.convertTo(B_cropped, CV_8UC3, 1.0*255, 0);
+
+    vector<Mat> bgr_planes;
+    split( A_cropped, bgr_planes );
+
+    vector<Mat> bgr_planes2;
+    split( B_cropped, bgr_planes2 );
+
+    // full images
+    Mat A2(A.size(), A.type());
+    Mat B2(B.size(), B.type());
+
+    A.convertTo(A2, CV_8UC3, 1.0*255, 0);
+    B.convertTo(B2, CV_8UC3, 1.0*255, 0);
+
+    vector<Mat> A_split;
+    split( A2, A_split );
+
+    vector<Mat> B_split;
+    split( B2, B_split );
+
+
+    /// Establish the number of bins
+    int histSize = 256;
+
+    /// Set the ranges ( for B,G,R) )
+    float range[] = { 0, 256 } ;
+    const float* histRange = { range };
+
+    bool uniform = true; bool accumulate = false;
+
+    Mat b_hist, g_hist, r_hist;
+    Mat b_hist2, g_hist2, r_hist2;
+
+    /// Compute the histograms:
+    calcHist( &bgr_planes[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, uniform, accumulate );
+
+    calcHist( &bgr_planes2[0], 1, 0, Mat(), b_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes2[1], 1, 0, Mat(), g_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &bgr_planes2[2], 1, 0, Mat(), r_hist2, 1, &histSize, &histRange, uniform, accumulate );
+
+    // todo: cdf 
+    Mat cdf_r_hist(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist(b_hist.size(), b_hist.type());
+    Mat cdf_r_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist2(b_hist.size(), b_hist.type());
+
+    for( int i = 0; i < histSize; i++ ){
+        if (i == 0){
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i));
+        }
+        else {
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i)) + cvRound(cdf_r_hist.at<float>(i-1));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i)) + cvRound(cdf_g_hist.at<float>(i-1));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i)) + cvRound(cdf_b_hist.at<float>(i-1));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i)) + cvRound(cdf_r_hist2.at<float>(i-1));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i)) + cvRound(cdf_g_hist2.at<float>(i-1));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i)) + cvRound(cdf_b_hist2.at<float>(i-1));
+        }
+    }
+
+    Mat M_r(b_hist.size(), CV_8U);
+    Mat M_g(b_hist.size(), CV_8U);
+    Mat M_b(b_hist.size(), CV_8U);
+
+    for( int i = 0; i < histSize; i++ ){
+        // i is a pixel intensity value
+        
+        int target_intensity = 255;
+        float num_pixels_in_a;
+        float num_pixels_in_b;
+
+        // r channel
+        num_pixels_in_a = cdf_r_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_r_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_r.at<char>(i) = target_intensity;
+
+        // g channel
+        num_pixels_in_a = cdf_g_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_g_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_g.at<char>(i) = target_intensity;
+
+        // b channel
+        num_pixels_in_a = cdf_b_hist.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_b_hist2.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_b.at<char>(i) = target_intensity;
+
+    }
+
+    // now the other way!
+    Mat M_r2(b_hist.size(), CV_8U);
+    Mat M_g2(b_hist.size(), CV_8U);
+    Mat M_b2(b_hist.size(), CV_8U);
+
+    for( int i = 0; i < histSize; i++ ){
+        // i is a pixel intensity value
+        
+        int target_intensity = 255;
+        float num_pixels_in_a;
+        float num_pixels_in_b;
+
+        // r channel
+        num_pixels_in_a = cdf_r_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_r_hist.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_r2.at<char>(i) = target_intensity;
+
+        // g channel
+        num_pixels_in_a = cdf_g_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_g_hist.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_g2.at<char>(i) = target_intensity;
+
+        // b channel
+        num_pixels_in_a = cdf_b_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_b_hist.at<float>(j);
+            if (num_pixels_in_b >= num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_b2.at<char>(i) = target_intensity;
+
+    }
+
+
+    // correct one direction
+    Mat new_r(A.size(), CV_8U);
+    Mat new_g(A.size(), CV_8U);
+    Mat new_b(A.size(), CV_8U);
+
+    vector<Mat> new_face;
+
+    LUT( A_split[0], M_b, new_b );
+    LUT( A_split[1], M_g, new_g );
+    LUT( A_split[2], M_r, new_r );
+    
+    new_face.push_back(new_b);
+    new_face.push_back(new_g);
+    new_face.push_back(new_r);
+
+    merge(new_face, A_color_corrected);
+
+    //imshow("A color corrected", A_color_corrected);
+    
+
+
+    // correct other direction
+    Mat new_r2(B.size(), CV_8U);
+    Mat new_g2(B.size(), CV_8U);
+    Mat new_b2(B.size(), CV_8U);
+
+    vector<Mat> new_face2;
+
+    LUT( B_split[0], M_b2, new_b2 );
+    LUT( B_split[1], M_g2, new_g2 );
+    LUT( B_split[2], M_r2, new_r2 );
+    
+    new_face2.push_back(new_b2);
+    new_face2.push_back(new_g2);
+    new_face2.push_back(new_r2);
+
+    merge(new_face2, B_color_corrected);
+
+    //imshow("B color corrected", B_color_corrected);
+
+
+    A_color_corrected.convertTo(A_color_corrected, CV_64FC3, 1.0/255, 0);
+    B_color_corrected.convertTo(B_color_corrected, CV_64FC3, 1.0/255, 0);
+    //waitKey(0);
 }
 
 static SwapApp *the_app = NULL;
