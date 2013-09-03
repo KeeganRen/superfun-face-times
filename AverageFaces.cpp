@@ -81,7 +81,7 @@ void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image, char*
 
     if (output_vid_file){
         convert_holder = imread(imageFiles[0].c_str(), CV_LOAD_IMAGE_COLOR);
-        outputVideo.open(output_vid_file, CV_FOURCC('P','I','M','1'), 25, final_blend.size(), true);
+        outputVideo.open(output_vid_file, CV_FOURCC('U','2','6','3'), 25, final_blend.size(), true);
     }
 
     double alpha;

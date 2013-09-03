@@ -132,7 +132,7 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     FaceLib::loadFiducialPoints(templateFaceFile, templatePoints2D);
 
     //string maskImagefile = "data/igormask.png";
-    string maskImagefile = "data/igormaskcopy.png";
+    string maskImagefile = "data/igormask-smaller.png";
     maskImage = imread(maskImagefile);
     cout << endl << "  mask type: " << maskImage.type() << endl;
 
@@ -240,7 +240,8 @@ void SwapApp::swap(){
     Mat inverseXXX;
     invertAffineTransform(xxx, inverseXXX);
     Mat transformedB = Mat::zeros(B.rows, B.cols, B.type() );
-    warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
+    warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    //warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
     ABlendedToB = Mat::zeros(B.rows, B.cols, B.type() );
     transformedB.copyTo(ABlendedToB, B_mask);
     ABlendedToB = FaceLib::montage(transformedB, B, B_mask);
