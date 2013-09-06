@@ -14,7 +14,6 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <istream>
 #include <opencv2/opencv.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
 
 
 using namespace std;
