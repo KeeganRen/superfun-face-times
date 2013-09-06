@@ -104,9 +104,9 @@ void PhotoBioApp::loadFeaturesAndDoStuff(char* outfile){
     fprintf(file, "convert -delay 20 -loop 0 ");
     for (int i = 0; i < seq.size(); i++){ 
         //fprintf(file, "%d\n", seq[i]);
-        fprintf(file, "/Users/ktuite/Code/FaceServer/data/images/%d_warped.jpg ", seq[i]);
+        fprintf(file, "/Users/ktuite/Code/FaceServer/data/images/%d_warped.jpg ", imageIds[seq[i]]);
     }
-    fprintf(file, "photobio.gif");
+    fprintf(file, "$1");
     fclose(file);
 
 }
