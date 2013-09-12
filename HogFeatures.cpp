@@ -106,7 +106,7 @@ void HogFeatures::init(){
     }
     else if (imageListFile){
         printf("image list file: %s\n", imageListFile);
-        FILE *file = fopen ( "/Users/ktuite/Desktop/neg/imgs.txt", "r" );
+        FILE *file = fopen ( imageListFile, "r" );
         if ( file != NULL ) {
             char image_path[256];
             while( fscanf(file, "%s\n", image_path) > 0 ) {
@@ -124,14 +124,16 @@ void HogFeatures::init(){
 
     for (int i = 0; i < images.size(); i++){
         Mat img = imread(images[i].c_str());
-        cvtColor(img, img, CV_BGR2GRAY);
-        hog.compute(img,ders,Size(32,32),Size(0,0),locs);
+        if (img.data != NULL){
+            cvtColor(img, img, CV_BGR2GRAY);
+            hog.compute(img,ders,Size(64,64),Size(0,0),locs);
         
-        for(int i=0;i<ders.size();i++) {
-            fprintf(hog_file, "%f ", ders.at(i));
+            for(int i=0;i<ders.size();i++) {
+                fprintf(hog_file, "%f ", ders.at(i));
+            }
+            fprintf(hog_file, "\n");
         }
 
-        fprintf(hog_file, "\n");
     }
 
     fclose (hog_file);
