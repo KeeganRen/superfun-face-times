@@ -4,7 +4,7 @@ CFLAGS=-c -Wall -O3 -g
 
 OPENCV_PREFIX = /opt/local
 
-LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include -L/usr/lib -L/usr/lib64 
+LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include -L/usr/lib  
 INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/usr/include -I/usr/include/opencv -I/homes/grail/ktuite/library
 
 LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video 
@@ -53,6 +53,9 @@ AVGFACESOURCES=AverageFaces.cpp
 PHOTOBIO=photoBio
 PHOTOBIOSOURCES=PhotoBio.cpp
 
+HOGFEATURES=hogFeatures
+HOGFEATURESSOURCES=HogFeatures.cpp
+
 all: $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) $(MORPHFACE) $(SHAPEFACE) $(INCCFLOW) $(SWAPFACE) $(AVGFACE) $(PHOTOBIO)
 
 clean: 
@@ -90,6 +93,9 @@ $(SWAPFACE): $(SWAPFACESOURCES) $(FACELIBOBJECTS) $(FLOWOBJECTS)
 
 $(AVGFACE):  $(AVGFACESOURCES)  
 	$(CC) $(INCDIR) $(LIBDIR) $(AVGFACESOURCES) -o $@ $(LIBS)
+
+$(HOGFEATURES):  $(HOGFEATURESSOURCES)  
+	$(CC) $(INCDIR) $(LIBDIR) $(HOGFEATURESSOURCES) -o $@ $(LIBS) -lopencv_objdetect
 
 $(PHOTOBIO):  $(PHOTOBIOSOURCES)  
 	$(CC) $(INCDIR) $(LIBDIR) $(ANN_LIB) $(ANN_INC) $(PHOTOBIOSOURCES) -o $@ $(LIBS) -lANN
