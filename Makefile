@@ -9,8 +9,8 @@ INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/
 
 LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video 
 
-ANN_LIB = -L/Users/ktuite/Library/ann_1.1.2/lib
-ANN_INC = -I/Users/ktuite/Library/ann_1.1.2/include
+ANN_LIB = -L/homes/grail/ktuite/library/ann_1.1.2/lib -L/Users/ktuite/Library/ann_1.1.2/lib
+ANN_INC = -I/homes/grail/ktuite/library/ann_1.1.2/include -I/Users/ktuite/Library/ann_1.1.2/include
 
 COLLECTIONFLOWFACE=collectionFlow
 COLLECTIONFLOWSOURCES=CollectionFlowApp.cpp

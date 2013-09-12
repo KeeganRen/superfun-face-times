@@ -101,10 +101,10 @@ void PhotoBioApp::loadFeaturesAndDoStuff(char* outfile){
     findNextPic(starting_id);
 
     FILE *file = fopen ( outfile, "w" );
-    fprintf(file, "convert -delay 20 -loop 0 ");
+    fprintf(file, "convert -resize 200x200 -delay 20 -loop 0 ");
     for (int i = 0; i < seq.size(); i++){ 
         //fprintf(file, "%d\n", seq[i]);
-        fprintf(file, "/Users/ktuite/Code/FaceServer/data/images/%d_warped.jpg ", imageIds[seq[i]]);
+        fprintf(file, "/projects/grail/facegame/face-server/data/images/%d_warped.jpg ", imageIds[seq[i]]);
     }
     fprintf(file, "$1");
     fclose(file);

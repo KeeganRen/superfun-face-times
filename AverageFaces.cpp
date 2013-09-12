@@ -6,12 +6,12 @@
 
 #include "getopt.h"
 #include <string.h>
+#include <fstream>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include <opencv/highgui.h>
 #include "opencv2/imgproc/imgproc.hpp"
-#include <istream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>  // Video write
@@ -61,15 +61,30 @@ void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image, char*
     vector<string> imageFiles;
 
     FILE *file = fopen ( file_list, "r" );
-    if ( file != NULL ) {
+    if ( file != NULL) {
         char image_path[256];
-        while( fscanf(file, "%s\n", image_path) > 0 ) {
-            imageFiles.push_back(image_path);
+        int r = fscanf(file, "%s\n", image_path); 
+        while( r != EOF && r > 0 ) {
+            ifstream ifile(image_path);
+            if (ifile) {
+                imageFiles.push_back(image_path);
+            }
+            else {
+                printf("file not found: %s\n", image_path);
+            }
+            r = fscanf(file, "%s\n", image_path); 
+            
         }
         fclose (file);
     }
     else {
+        printf("couldnt open the file");
         perror (file_list);
+        exit(-1);
+    }
+
+    if (imageFiles.size() == 0){
+        exit(-1);
     }
 
 

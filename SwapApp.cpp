@@ -240,8 +240,8 @@ void SwapApp::swap(){
     Mat inverseXXX;
     invertAffineTransform(xxx, inverseXXX);
     Mat transformedB = Mat::zeros(B.rows, B.cols, B.type() );
-    //warpAffine(A, transformedB, inverseXXX, transformedB.size());
-    warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
+    warpAffine(A, transformedB, inverseXXX, transformedB.size());
+    //warpAffine(A_color_corrected, transformedB, inverseXXX, transformedB.size());
     ABlendedToB = Mat::zeros(B.rows, B.cols, B.type() );
     transformedB.copyTo(ABlendedToB, B_mask);
     ABlendedToB = FaceLib::montage(transformedB, B, B_mask);
@@ -345,7 +345,7 @@ void SwapApp::histogramFunTimes(Mat &A_cropped, Mat &B_cropped, Mat &A, Mat &B){
     int histSize = 256;
 
     /// Set the ranges ( for B,G,R) )
-    float range[] = { 0, 256 } ;
+    float range[] = { 1, 256 } ;
     const float* histRange = { range };
 
     bool uniform = true; bool accumulate = false;
