@@ -119,31 +119,34 @@ void HogFeatures::init(){
 
     FILE *hog_file = fopen ( outputFile, "w" );
     HOGDescriptor d;
-    d.winSize = Size(32,32);
+    d.winSize = Size(32, 32);
+    d.blockSize = Size(32, 32);
+    d.cellSize = Size(16, 16);
 
     vector<float> ders;
     vector<Point>locs;
 
+    Rect cropROI(128, 70, 250, 310);
+
     for (int i = 0; i < images.size(); i++){
         Mat img = imread(images[i].c_str());
         if (img.data != NULL){
+            img = img(cropROI);
+
             cvtColor(img, img, CV_BGR2GRAY);
         
-            d.compute(img,ders,Size(32,32), Size(0,0),locs);
+            d.compute(img,ders,Size(32,32),Size(0,0),locs);
         
-        /*
-        cout << "HOG descriptor size is " << d.getDescriptorSize() << endl;
-        cout << "img dimensions: " << img.cols << " width x " << img.rows << "height" << endl;
-        cout << "Found " << ders.size() << " descriptor values" << endl;
-        cout << "Nr of locations specified : " << locs.size() << endl;
+            /*
+            cout << "HOG descriptor size is " << d.getDescriptorSize() << endl;
+            cout << "img dimensions: " << img.cols << " width x " << img.rows << "height" << endl;
+            cout << "Found " << ders.size() << " descriptor values" << endl;
+            cout << "Nr of locations specified : " << locs.size() << endl;
 
-        cout << "locs size: " << locs.size() << endl;;
-        cout << "ders size: " << ders.size() << endl;;
-    
-        for(int i=0;i<locs.size();i++) {
-            cout << i << " " << locs.at(i) << endl;
-        }*/
-    
+            cout << "locs size: " << locs.size() << endl;;
+            cout << "ders size: " << ders.size() << endl;;
+            */
+            
             for(int i=0;i<ders.size();i++) {
                 fprintf(hog_file, "%f ", ders.at(i));
             }
