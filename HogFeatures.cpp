@@ -146,10 +146,12 @@ void HogFeatures::init(){
             cout << "locs size: " << locs.size() << endl;;
             cout << "ders size: " << ders.size() << endl;;
             */
-            
+
             for(int i=0;i<ders.size();i++) {
                 fprintf(hog_file, "%f ", ders.at(i));
             }
+
+            fprintf(hog_file, "\n");
         }
 
     }
