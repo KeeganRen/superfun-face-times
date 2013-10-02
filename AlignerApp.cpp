@@ -12,6 +12,7 @@
 #include <istream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include "opencv2/video/tracking.hpp"
 
 using namespace std;
 using namespace cv;
@@ -24,11 +25,9 @@ void error(char *msg) {
 
 void PrintUsage() 
 {
-    printf("\nABOUT THIS CODE AND WHAT IT DOES:\nFor testing out different face alignment methods:\n");
-    printf(" - affine anchored on the eyes+mouth\n");
-    printf(" - etc...\n\n");
+    printf("\nAlign and crop an image! Produces a warped (500x500 image), a cropped head and a cropped face.\n");
     printf("Usage:  \n" \
-            "   \t<face image> <face points>\n" \
+            "   \t<face image> <face points> <output base>\n" \
             "   \t or\n" \
             "   \t<list of [input image, input points, output mask]>\n" \
             "\n");
@@ -44,12 +43,13 @@ void AlignerApp::init(){
         exit(0);
     }
     
-    if (argc == 3){
+    if (argc == 4){
         face_file = argv[1];
         face_points_file = argv[2];
+        output_base = argv[3];
 
         load();
-        test2();
+        test1();
     }
     else if (argc == 2){
         list_file = argv[1];
@@ -64,9 +64,13 @@ void AlignerApp::init(){
 void AlignerApp::load(){
     printf("[load] loading files: \n\t[%s]\n\t[%s]\n", face_file, face_points_file);
     face = imread(face_file);
+    if (face.data == NULL){
+        printf("error loading image\n");
+        exit(-2);
+    }
     face_points = loadPoints(face_points_file);
 
-    char *template_points_file = "model/grid-igor-canonical2d.txt";
+    char *template_points_file = "/Users/ktuite/Desktop/averageman_symmetric.txt";
     template_points = loadPoints(template_points_file);
 
     char *mask_file = "model/igormask.png";
@@ -77,6 +81,7 @@ void AlignerApp::load(){
     Mat mask_with_points = imread(mask_file);
     for (int i = 0; i < template_points.size(); i++){
         circle(mask_with_points, template_points[i], 1,  CV_RGB(255, 5, 34), 0, 8, 0);
+        circle(face_with_points, face_points[i], 3, CV_RGB(34, 77, 255), 2, 8, 0);
         circle(face_with_points, face_points[i], 3, CV_RGB(34, 77, 255), 2, 8, 0);
     }
     if (visualize){
@@ -110,6 +115,12 @@ vector<Point2f> AlignerApp::loadPoints(const char* filename){
     vector<Point2f> points;
     FILE *file = fopen ( filename, "r" );
     if ( file != NULL ) {
+        int num_features;
+        if (fscanf(file, "%d\n", &num_features) < 1){
+            printf("error reading list of feature points\n");
+            exit(-1);
+        }
+        printf("number of points loaded: %d\n", num_features);
         float x, y;
         while( fscanf(file, "%f %f\n", &x, &y) > 0 ) {
             points.push_back(Point2f(x,y));
@@ -118,6 +129,7 @@ vector<Point2f> AlignerApp::loadPoints(const char* filename){
     }
     else {
         perror (filename);
+        exit(-1);
     }
 
     return points;
@@ -127,7 +139,7 @@ void AlignerApp::dealWithImage(string image, string points, string out){
     face_file = (char*)image.c_str();
     face_points_file = (char*)points.c_str();
     load();
-    test4();
+    test1();
     imwrite(out, mask);
 }
 
@@ -135,179 +147,48 @@ void AlignerApp::test1(){
     printf("[test1] anchoring based on the eyes and nose\n");
 
     vector<Point2f> f, c;
-    if (0){
-        f.push_back(middle(face_points[0], face_points[1]));
-        f.push_back(middle(face_points[6], face_points[7]));
-        f.push_back(middle(face_points[8], face_points[9]));
-
-        c.push_back(middle(template_points[0], template_points[1]));
-        c.push_back(middle(template_points[6], template_points[7]));
-        c.push_back(middle(template_points[8], template_points[9]));
-    }
-    else {
-        f.push_back(face_points[0]);
-        f.push_back(face_points[7]);
-        f.push_back(middle(face_points[8], face_points[9]));
-
-        c.push_back(template_points[0]);
-        c.push_back(template_points[7]);
-        c.push_back(middle(template_points[8], template_points[9]));
-    }
+    f = face_points;
+    c = template_points;
 
     Mat warp_mat( 2, 3, CV_32FC1 );
-    warp_mat = getAffineTransform( f, c );
+    warp_mat = estimateRigidTransform( f, c, false);
 
     cout << "warp mat" << endl << warp_mat << endl;
 
-    warpAffine( face, mask, warp_mat, mask.size() );
+    Mat warped_face(500, 500, CV_32FC3);
+
+    Point2f cropFaceSize(225, 250);
+    Rect cropFaceROI((500-cropFaceSize.x)/2.0, (500-cropFaceSize.y)/2.0 + 20, cropFaceSize.x, cropFaceSize.y);
+
+    Point2f cropHeadSize(290, 365);
+    Rect cropHeadROI((500-cropHeadSize.x)/2.0, (500-cropHeadSize.y)/2.0 + 10, cropHeadSize.x, cropHeadSize.y);
+
+    warpAffine( face, warped_face, warp_mat, warped_face.size() );
+
+    Mat cropFace = warped_face(cropFaceROI);
+    Mat cropHead = warped_face(cropHeadROI);
+
+    resize(warped_face, warped_face, Size(), 0.5, 0.5);
+    resize(cropHead, cropHead, Size(), 0.5, 0.5);
 
     if (visualize){
-        imshow("warped", mask);
+        imshow("warped", warped_face);
+        imshow("crop face", cropFace);
+        imshow("crop head", cropHead);
         waitKey(0);
     }
-}
 
-void AlignerApp::test2(){
-    printf("[test1] anchoring based on the eyes and nose\n");
+    char warped_file[512];
+    char crop_face_file[512];
+    char crop_head_file[512];
 
-    vector<Point2f> f, c;
+    sprintf(warped_file, "%s_warped.jpg", output_base);
+    sprintf(crop_face_file, "%s_cropface.jpg", output_base);
+    sprintf(crop_head_file, "%s_crophead.jpg", output_base);
 
-    f.push_back(middle(face_points[0], face_points[1]));
-    f.push_back(middle(face_points[6], face_points[7]));
-    f.push_back(middle(face_points[8], face_points[9]));
-    //f.push_back(middle(face_points[2], face_points[3]));
-    //f.push_back(face_points[5]);
-
-    c.push_back(middle(template_points[0], template_points[1]));
-    c.push_back(middle(template_points[6], template_points[7]));
-    c.push_back(middle(template_points[8], template_points[9]));
-    //c.push_back(middle(template_points[2], template_points[3]));
-    //c.push_back(template_points[5]);
-  
-    f[2] = perpendicularPoint(f);
-    c[2] = perpendicularPoint(c);
-
-    Mat warp_mat( 2, 3, CV_32FC1 );
-    warp_mat = getAffineTransform( f, c );
-
-    cout << "warp mat" << endl << warp_mat << endl;
-
-    Mat warped_face = mask.clone();
-    Mat warped_face2 = mask.clone();
-    warpAffine( face, warped_face, warp_mat, mask.size() );
-    warped_face.copyTo(warped_face2, mask);
-    mask = warped_face2;
-
-    if (visualize){
-        imshow("warped", warped_face2);
-        waitKey(0);
-    }
-}
-
-void AlignerApp::test3(){
-    printf("[test1] anchoring based on the eyes and nose\n");
-
-    vector<Point2f> f, c;
-
-    f.push_back(middle(face_points[0], face_points[1]));
-    f.push_back(middle(face_points[6], face_points[7]));
-    f.push_back(face_points[5]);
-
-    c.push_back(middle(template_points[0], template_points[1]));
-    c.push_back(middle(template_points[6], template_points[7]));
-    c.push_back(template_points[5]);
-  
-    f[2] = perpendicularPoint(f);
-    c[2] = perpendicularPoint(c);
-
-    Mat warp_mat( 2, 3, CV_32FC1 );
-    warp_mat = getAffineTransform( f, c );
-
-    cout << "warp mat" << endl << warp_mat << endl;
-
-    Mat warped_face = mask.clone();
-    Mat warped_face2 = mask.clone();
-    warpAffine( face, warped_face, warp_mat, mask.size() );
-    warped_face.copyTo(warped_face2, mask);
-    mask = warped_face2;
-
-    if (visualize){
-        imshow("warped", warped_face2);
-        waitKey(0);
-    }
-}
-
-void AlignerApp::test4(){
-    printf("[test1] anchoring based on the eyes and nose\n");
-
-    vector<Point2f> f, c;
-
-    f.push_back(middle(face_points[0], face_points[1]));
-    f.push_back(middle(face_points[6], face_points[7]));
-    f.push_back(middle(face_points[2], face_points[3]));
-
-    c.push_back(middle(template_points[0], template_points[1]));
-    c.push_back(middle(template_points[6], template_points[7]));
-    c.push_back(middle(template_points[2], template_points[3]));
-  
-    f[2] = perpendicularPoint(f);
-    c[2] = perpendicularPoint(c);
-
-    Mat warp_mat( 2, 3, CV_32FC1 );
-    warp_mat = getAffineTransform( f, c );
-
-    cout << "warp mat" << endl << warp_mat << endl;
-
-    Mat warped_face = mask.clone();
-    Mat warped_face2 = mask.clone();
-    warpAffine( face, warped_face, warp_mat, mask.size() );
-    warped_face.copyTo(warped_face2, mask);
-    
-    mask = warped_face2;
-
-    if (visualize){
-        imshow("warped", warped_face2);
-        waitKey(0);
-    }
-    
-
-}
-
-Point2f AlignerApp::middle(Point2f a, Point2f b){
-    Point2f c = Point2f((a.x + b.x)/2.0, (a.y + b.y)/2.0);
-    return c;
-}
-
-Point2f AlignerApp::perpendicularPoint(vector<Point2f> f){
-    // line between eye points ax + by + c = 0
-    double a = (f[1].y - f[0].y)/(f[1].x - f[0].x);
-    double b = -1;
-    double c = -b*f[1].y - a*f[1].x;
-    printf("%f * x + %f * y + c = 0\n", a, b, c);
-
-    Point2f eye_mid = middle(f[0], f[1]);
-
-    printf("%f, %f\n", a * f[2].x + b * f[2].y + c, sqrt(a*a + b*b));
-
-    double dist = abs(a * f[2].x + b * f[2].y + c)/sqrt(a*a + b*b);
-    printf("disance from nose pt to eye line: %f\n", dist);
-
-    Point2d new_pt = eye_mid - Point2f(a,b)*(1.0/sqrt(a*a + b*b))*dist;
-    printf("new point: %f, %f\n", new_pt.x, new_pt.y);
-    printf("nose pt: %f %f\n", f[2].x, f[2].y);
-
-    /*
-    for (int i = 0; i < 3; i++){
-        circle(face, f[i], 3,  CV_RGB(255, 5, 34), 4, 8, 0);
-    }
-
-    circle(face, eye_mid, 3,  CV_RGB(0, 200, 34), 4, 8, 0);
-    circle(face, new_pt, 3,  CV_RGB(255, 200, 34), 4, 8, 0);
-    imshow ("new pts on face", face);
-    waitKey(0);
-    */
-
-    return new_pt;
+    imwrite(warped_file, warped_face);
+    imwrite(crop_head_file, cropHead);
+    imwrite(crop_face_file, cropFace);
 }
 
 static AlignerApp *the_app = NULL;

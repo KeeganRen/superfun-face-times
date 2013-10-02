@@ -14,19 +14,13 @@ public:
     vector<Point2f> loadPoints(const char* filename);
     void dealWithImage(string image, string points, string out);
     void test1();
-    void test2();
-    void test3();
-    void test4();
-    Point2f perpendicularPoint(vector<Point2f> f);
-
-    Point2f middle(Point2f a, Point2f b);
-
     int argc;
     char **argv;
     
     char *face_file;
     char *face_points_file;
     char *list_file;
+    char *output_base;
 
     Mat face;
     Mat mask;

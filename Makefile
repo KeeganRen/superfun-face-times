@@ -2,7 +2,7 @@
 CC = g++
 CFLAGS=-c -Wall -O3 -g
 
-OPENCV_PREFIX = /opt/local
+OPENCV_PREFIX = /usr/local/Cellar/opencv/2.4.6.1/
 
 LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include -L/usr/lib  
 INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/usr/include -I/usr/include/opencv -I/homes/grail/ktuite/library
@@ -34,7 +34,7 @@ AGINGSOURCES=AgingApp.cpp
 FLOWFACE=flowFace
 FLOWSOURCES=GaussianPyramid.cpp OpticalFlow.cpp CVOpticalFlow.cpp Stochastic.cpp
 FLOWOBJECTS=$(FLOWSOURCES:.cpp=.o)
-FLOWFLAGS=-D_LINUX_MAC -D_OPENCV -I/opt/local/include/opencv 
+FLOWFLAGS=-D_LINUX_MAC -D_OPENCV -I$(OPENCV_PREFIX)/include/opencv 
 
 FACELIBSOURCES=FaceLib.cpp
 FACELIBOBJECTS=$(FACELIBSOURCES:.cpp=.o)

@@ -13,7 +13,6 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include "opencv2/video/tracking.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_blas.h>
 
