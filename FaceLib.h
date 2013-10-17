@@ -34,6 +34,7 @@ class FaceLib {
         static void compositeFlow(Mat &vx_ab, Mat &vy_ab, Mat &vx_cd, Mat &vy_cd, Mat &out_x, Mat &out_y);
 
         static void loadFiducialPoints(string file, std::vector<cv::Point2f> &point_vector);
+        static void loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point_vector);
         static void computeTransform(Mat &frame, vector<Point2f> detectedPoints, vector<Point2f> templatePoints2D, Mat &xform);
         static Point2f middle(Point2f a, Point2f b);
         static Point2f perpendicularPoint(vector<Point2f> f);

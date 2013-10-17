@@ -205,7 +205,30 @@ void FaceLib::loadFiducialPoints(string file, std::vector<cv::Point2f> &point_ve
     }
     
     double x,y;
-    while (fscanf(f1, "%lf %lf", &x, &y) != EOF){
+    while (fscanf(f1, "%lf %lf\n", &x, &y) != EOF){
+        point_vector.push_back(Point2f(x,y));
+    }
+    
+    printf("Size of points vector loaded from [%s]: %d\n", file.c_str(), int(point_vector.size()));
+}
+
+void FaceLib::loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point_vector){    
+    point_vector.clear();
+
+    FILE *f1 = fopen(file.c_str(), "r");
+    
+    if (!f1){
+        printf("couldn't open fiducial point file [%s]\n", file.c_str());
+        exit(0);
+    }
+    
+    int n; 
+    int num_items_first_line = fscanf(f1, "%d\n", &n);
+    printf("num_items_first_line: %d\n", num_items_first_line);
+
+    double x,y;
+    
+    while (fscanf(f1, "%lf %lf\n", &x, &y) != EOF){
         point_vector.push_back(Point2f(x,y));
     }
     
@@ -216,22 +239,29 @@ void FaceLib::computeTransform(Mat &frame, vector<Point2f> detectedPoints, vecto
     printf("[computeTransform] detected pts %d template pts %d\n", detectedPoints.size(), templatePoints.size());
 
     vector<Point2f> f, c;
-
-    f.push_back(middle(detectedPoints[0], detectedPoints[1]));
-    f.push_back(middle(detectedPoints[6], detectedPoints[7]));
-    f.push_back(middle(detectedPoints[2], detectedPoints[3]));
-
-    c.push_back(middle(templatePoints[0], templatePoints[1]));
-    c.push_back(middle(templatePoints[6], templatePoints[7]));
-    c.push_back(middle(templatePoints[2], templatePoints[3]));
-  
-    f[2] = perpendicularPoint(f);
-    c[2] = perpendicularPoint(c);
+    f = detectedPoints;
+    c = templatePoints;
 
     xform = Mat( 2, 3, CV_32FC1 );
-    xform = getAffineTransform( f, c );
+    xform = estimateRigidTransform( f, c, false);
+
+    cout << "warp mat" << endl << xform << endl;
 
     /*
+    Mat warped_face(500, 500, CV_32FC3);
+
+    Point2f cropFaceSize(225, 250);
+    Rect cropFaceROI((500-cropFaceSize.x)/2.0, (500-cropFaceSize.y)/2.0 + 20, cropFaceSize.x, cropFaceSize.y);
+
+
+    warpAffine( frame, warped_face, xform, warped_face.size() );
+
+    Mat cropFace = warped_face(cropFaceROI);
+    imshow("cropped", cropFace);
+    waitKey(0);
+    */
+
+        /*
     Mat warped = Mat::zeros(192, 139, frame.type() );
     Mat masked = Mat::zeros(192, 139, frame.type() );
     warpAffine(frame, warped, transform, warped.size() );

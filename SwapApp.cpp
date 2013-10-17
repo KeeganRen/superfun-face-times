@@ -30,7 +30,7 @@ void error(char *msg) {
 void PrintUsage() 
 {
     printf("Usage:  \n" \
-            "   \t<full face A> <full face B> <A landmarks> <B landmarks> <cluster dir> <output dir>\n" \
+            "   \t<full face A> <full face B> <A landmarks> <B landmarks> <output dir>\n" \
             "\n");
 }
 
@@ -46,13 +46,20 @@ void SwapApp::init(){
     char *faceBFile = argv[2];
     char *landmarkAFile = argv[3];
     char *landmarkBFile = argv[4];
-    char *clusterPath = argv[5];
-    outPath = argv[6];
+    char *clusterPath = NULL;
+    outPath = argv[5];
 
     load(faceAFile, faceBFile, landmarkAFile, landmarkBFile, clusterPath);
 
     FaceLib::computeTransform(A, landmarkA, templatePoints2D, A_xform);
     FaceLib::computeTransform(B, landmarkB, templatePoints2D, B_xform);
+
+    Point2f cropFaceSize(225, 250);
+    A_xform.at<double>(0,2) -= (500-cropFaceSize.x)/2.0;
+    A_xform.at<double>(1,2) -= (500-cropFaceSize.y)/2.0 + 20;
+
+    B_xform.at<double>(0,2) -= (500-cropFaceSize.x)/2.0;
+    B_xform.at<double>(1,2) -= (500-cropFaceSize.y)/2.0 + 20;
 
     cout << "A_xform" << endl;
     cout << A_xform << endl;
@@ -125,17 +132,18 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     B = imread(faceBFile);
     B.convertTo(B, CV_64FC3, 1.0/255, 0);
 
-    FaceLib::loadFiducialPoints(landmarkAFile, landmarkA);
-    FaceLib::loadFiducialPoints(landmarkBFile, landmarkB);
+    FaceLib::loadNewFiducialPoints(landmarkAFile, landmarkA);
+    FaceLib::loadNewFiducialPoints(landmarkBFile, landmarkB);
 
-    string templateFaceFile = "data/grid-igor-canonical2d.txt";
-    FaceLib::loadFiducialPoints(templateFaceFile, templatePoints2D);
+    string templateFaceFile = "data/averageman_symmetric.txt";
+    FaceLib::loadNewFiducialPoints(templateFaceFile, templatePoints2D);
 
     //string maskImagefile = "data/igormask.png";
-    string maskImagefile = "data/igormask-smaller.png";
+    string maskImagefile = "data/cropped_mask2.png";
     maskImage = imread(maskImagefile);
     cout << endl << "  mask type: " << maskImage.type() << endl;
 
+    /*
     char meanfaceFile[256];
     sprintf(meanfaceFile, "%s/cflow/clustermean.jpg", clusterPath);
     printf("\treading mean face from: %s\n", meanfaceFile);
@@ -149,6 +157,8 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
 
     m_gsl_meanface = gsl_vector_calloc(num_pixels);
     FaceLib::matToGslVec(meanfaceMat, m_gsl_meanface,  d, w, h);
+
+    
 
     // eigenfaces
     num_eigenfaces = 4;
@@ -164,6 +174,7 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
         int success = gsl_vector_fread(f, &col.vector);        
     }
 
+    */
     // TODO: loadEigenfaces()
     // project each masked face into eigenfaces
     // compute flow in the right directions
