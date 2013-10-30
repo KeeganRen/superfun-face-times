@@ -13,6 +13,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include "opencv2/video/tracking.hpp"
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_blas.h>
 
 using namespace std;
 using namespace cv;
@@ -70,7 +72,7 @@ void AlignerApp::load(){
     }
     face_points = loadPoints(face_points_file);
 
-    char *template_points_file = "/Users/ktuite/Desktop/averageman_symmetric.txt";
+    char *template_points_file = "data/averageman_symmetric.txt";
     template_points = loadPoints(template_points_file);
 
     char *mask_file = "model/igormask.png";
@@ -150,8 +152,8 @@ void AlignerApp::test1(){
     f = face_points;
     c = template_points;
 
-    Mat warp_mat( 2, 3, CV_32FC1 );
-    warp_mat = estimateRigidTransform( f, c, false);
+    //Mat warp_mat = estimateRigidTransform( f, c, false);
+    Mat warp_mat = getSimilarityTransform(f,c);
 
     cout << "warp mat" << endl << warp_mat << endl;
 
@@ -189,6 +191,75 @@ void AlignerApp::test1(){
     imwrite(warped_file, warped_face);
     imwrite(crop_head_file, cropHead);
     imwrite(crop_face_file, cropFace);
+}
+
+Mat AlignerApp::getSimilarityTransform(vector<Point2f> src, vector<Point2f> dst){
+    // use GSL to do the actual transformations.... but put it back into opencv-happy format
+    
+    Mat warp_mat( 2, 3, CV_64FC1, Scalar::all(0));
+
+    if (src.size() != dst.size()){
+        printf("Error: vectors not the same size\n");
+        return warp_mat;
+    }
+
+    int num_pairs = src.size();
+    printf("finding similarity based on [%d] pairs of points\n", num_pairs);
+
+    gsl_matrix *m_gsl_src   = gsl_matrix_calloc(3, num_pairs);
+    gsl_matrix *m_gsl_dst  = gsl_matrix_calloc(3, num_pairs);
+
+    for (int i = 0; i < num_pairs; i++){
+        gsl_matrix_set(m_gsl_src, 0, i, src[i].x);
+        gsl_matrix_set(m_gsl_src, 1, i, src[i].y);
+        gsl_matrix_set(m_gsl_src, 2, i, 1);
+        gsl_matrix_set(m_gsl_dst, 0, i, dst[i].x);
+        gsl_matrix_set(m_gsl_dst, 1, i, dst[i].y);
+        gsl_matrix_set(m_gsl_dst, 2, i, 1);
+    }
+
+    // transform * src = dst
+    // transform = dst * src' * inv(src * src')
+
+    gsl_matrix *A = gsl_matrix_alloc(3,3);
+    gsl_matrix *B = gsl_matrix_alloc(3,3);
+
+    //A = dst * src'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_dst, m_gsl_src, 0.0, A);
+
+    //B = src * src'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, m_gsl_src, m_gsl_src, 0.0, B);
+
+    //invert B...
+    gsl_matrix *inv = gsl_matrix_alloc(3,3);
+    gsl_permutation *p = gsl_permutation_alloc(3);
+    int s;
+    gsl_linalg_LU_decomp(B, p, &s);
+    gsl_linalg_LU_invert(B, p, inv);
+
+    //multiply A and B^(-1)
+    gsl_matrix *m_gsl_transform = gsl_matrix_calloc(3,3);
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, A, inv, 0.0, m_gsl_transform);
+
+
+    printf("The transform is...\n");
+    for (int i = 0; i < 2; i++){
+        for (int j = 0; j < 3; j++){
+            printf("%.10f ", gsl_matrix_get(m_gsl_transform, i, j));
+            warp_mat.at<double>(i, j) =  gsl_matrix_get(m_gsl_transform, i, j);
+        }
+        printf("\n");
+    }
+
+    gsl_matrix_free(A);
+    gsl_matrix_free(B);
+    gsl_matrix_free(inv);
+    gsl_permutation_free(p);
+
+    
+    // set warp_mat
+    cout << "warp mat" << warp_mat << endl;
+    return warp_mat;
 }
 
 static AlignerApp *the_app = NULL;

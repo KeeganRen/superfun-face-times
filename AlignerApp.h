@@ -14,6 +14,7 @@ public:
     vector<Point2f> loadPoints(const char* filename);
     void dealWithImage(string image, string points, string out);
     void test1();
+    Mat getSimilarityTransform(vector<Point2f> a, vector<Point2f> b);
     int argc;
     char **argv;
     
