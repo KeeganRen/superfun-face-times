@@ -150,6 +150,7 @@ void CollectionFlowApp::openImages(){
     for( int i = 0; i < 256; i++ )
     ptr[i] = (int)( pow( (double) i / 255.0, inverse_gamma ) * 255.0 );
 
+    Mat mask = imread("jackiechan/mask.png");
 
     for (int i = 0; i < faceList.size(); i++){
         printf("opening image %d: %s\n", i, faceList[i].c_str());
@@ -169,6 +170,12 @@ void CollectionFlowApp::openImages(){
             else {
                 img.convertTo(result, CV_64FC3, 1.0/255, 0);
             }
+
+            Mat m;
+            result.copyTo(m, mask);
+
+
+            result = m;
             
             faceImages.push_back(result);
         }
@@ -457,11 +464,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
             Mat m_lowrank;
             gsl_vector_view col_low = gsl_matrix_column(m_gsl_mat_k, i);
-            gslVecToMatWithBorder(&col_low.vector, m_lowrank);
+            gslVecToMat(&col_low.vector, m_lowrank);
 
             Mat m_highrank;
             gsl_vector_view col_high = gsl_matrix_column(m_gsl_mat, i);
-            gslVecToMatWithBorder(&col_high.vector, m_highrank);
+            gslVecToMat(&col_high.vector, m_highrank);
     
             if (visualize){
                 imshow("high rank", m_highrank);
@@ -469,7 +476,7 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             }
 
             char filename1[100], filename2[100], filename3[100];
-            char flowFile[100], flowImage[100];
+            char flowFile[100], flowImage[100], flowImage2[100];
             const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
             sprintf(filename1, "%s/%s-orig-%d.jpg", outputDir, faceStr, k);
@@ -477,29 +484,31 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             sprintf(filename3, "%s/%s-warped-%d.jpg", outputDir, faceStr, k);
             sprintf(flowFile,  "%s/%s-flow-%d.bin", outputDir, faceStr, k);
             sprintf(flowImage,  "%s/%s-flow-%d.jpg", outputDir, faceStr, k);
+            sprintf(flowImage2,  "%s/%s-flow2-%d.jpg", outputDir, faceStr, k);
 
-            saveAsCropBorder(filename1, m_highrank);
-            saveAsCropBorder(filename2, m_lowrank);
+            saveAs(filename1, m_highrank);
+            saveAs(filename2, m_lowrank);
 
             
             printf("[computeFlow] image %d/%d\n", i, num_images);
             // magic variables
             double alpha = 0.02; // 0.015 smaller parameter should make it look even more sharp
             double ratio = 0.85; 
-            int minWidth = 40;
+            int minWidth = 20;
             int nOuterFPIterations = 7;
             int nInnerFPIterations = 1;
             int nSORIterations = 40; // sometimes use 20
             
             Mat vx, vy, warp;
+            Mat vx2, vy2, warp2
             
             CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
+            CVOpticalFlow::findFlow(vx2, vy2, warp2, m_highrank, m_lowrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
             if (visualize){
                 imshow("the warped picture", warp);
                 imshow("flow", CVOpticalFlow::showFlow(vx, vy));
+                imshow("flow2", CVOpticalFlow::showFlow(vx2, vy2));
             }
-
-
 
             Mat warped;
             if (gray){
@@ -516,12 +525,13 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 waitKey(0);
             }
 
-            matToGslVecWithBorder(m_highrank, &col_low.vector);
+            matToGslVec(m_highrank, &col_low.vector);
 
 
             CVOpticalFlow::writeFlow(flowFile, vx, vy);
-            saveAsCropBorder(filename3, m_highrank);
-            saveAsCropBorder(flowImage, CVOpticalFlow::showFlow(vx, vy));
+            saveAs(filename3, m_highrank);
+            saveAs(flowImage, CVOpticalFlow::showFlow(vx, vy));
+            saveAs(flowImage2, CVOpticalFlow::showFlow(vx2, vy2));
             
         }
     }

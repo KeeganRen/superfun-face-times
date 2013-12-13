@@ -69,8 +69,10 @@ Mat CVOpticalFlow::showFlow(Mat &vxi, Mat &vyi) {
   maxrad = sqrt(maxrad);
   for (int i=0; i<out.rows; i++) {
     for (int j=0; j<out.cols; j++) {
-      vx.at<double>(i, j) /= maxrad;
-      vy.at<double>(i, j) /= maxrad;
+      vx.at<double>(i, j) /= out.cols;
+      vy.at<double>(i, j) /= out.rows;
+      //vx.at<double>(i, j) /= maxrad;
+      //vy.at<double>(i, j) /= maxrad;
       out.at<Vec3d>(i, j)[0] = vx.at<double>(i, j) * 0.5 + 0.5;
       out.at<Vec3d>(i, j)[1] = vy.at<double>(i, j) * 0.5 + 0.5;
       out.at<Vec3d>(i, j)[2] = 0;
