@@ -2,6 +2,10 @@
 
 #include "FaceLib.h"
 
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_blas.h>
+
+
 void FaceLib::gslVecToMat(gsl_vector *orig, Mat &im, int d, int w, int h){
     gsl_vector* vec = gsl_vector_calloc(orig->size);
     gsl_vector_memcpy(vec, orig);
@@ -235,17 +239,67 @@ void FaceLib::loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point
     printf("Size of points vector loaded from [%s]: %d\n", file.c_str(), int(point_vector.size()));
 }
 
-void FaceLib::computeTransform(Mat &frame, vector<Point2f> detectedPoints, vector<Point2f> templatePoints, Mat &xform){
-    printf("[computeTransform] detected pts %d template pts %d\n", detectedPoints.size(), templatePoints.size());
+void FaceLib::computeTransform(Mat &frame, vector<Point2f> src, vector<Point2f> dst, Mat &xform){
+    printf("[computeTransform] detected pts %d template pts %d\n", src.size(), dst.size());
 
-    vector<Point2f> f, c;
-    f = detectedPoints;
-    c = templatePoints;
+    xform = ( 2, 3, CV_64FC1, Scalar::all(0));
 
-    xform = Mat( 2, 3, CV_32FC1 );
-    xform = estimateRigidTransform( f, c, false);
+    if (src.size() != dst.size()){
+        printf("Error: vectors not the same size\n");
+        return;
+    }
 
-    cout << "warp mat" << endl << xform << endl;
+    int num_pairs = src.size();
+    printf("finding similarity based on [%d] pairs of points\n", num_pairs);
+
+    gsl_matrix *m_gsl_src   = gsl_matrix_calloc(3, num_pairs);
+    gsl_matrix *m_gsl_dst  = gsl_matrix_calloc(3, num_pairs);
+
+    for (int i = 0; i < num_pairs; i++){
+        gsl_matrix_set(m_gsl_src, 0, i, src[i].x);
+        gsl_matrix_set(m_gsl_src, 1, i, src[i].y);
+        gsl_matrix_set(m_gsl_src, 2, i, 1);
+        gsl_matrix_set(m_gsl_dst, 0, i, dst[i].x);
+        gsl_matrix_set(m_gsl_dst, 1, i, dst[i].y);
+        gsl_matrix_set(m_gsl_dst, 2, i, 1);
+    }
+
+    gsl_matrix *A = gsl_matrix_alloc(3,3);
+    gsl_matrix *B = gsl_matrix_alloc(3,3);
+
+    //A = dst * src'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, m_gsl_dst, m_gsl_src, 0.0, A);
+
+    //B = src * src'
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, m_gsl_src, m_gsl_src, 0.0, B);
+
+    //invert B...
+    gsl_matrix *inv = gsl_matrix_alloc(3,3);
+    gsl_permutation *p = gsl_permutation_alloc(3);
+    int s;
+    gsl_linalg_LU_decomp(B, p, &s);
+    gsl_linalg_LU_invert(B, p, inv);
+
+    //multiply A and B^(-1)
+    gsl_matrix *m_gsl_transform = gsl_matrix_calloc(3,3);
+    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, A, inv, 0.0, m_gsl_transform);
+
+
+    printf("The transform is...\n");
+    for (int i = 0; i < 2; i++){
+        for (int j = 0; j < 3; j++){
+            printf("%.10f ", gsl_matrix_get(m_gsl_transform, i, j));
+            xform.at<double>(i, j) =  gsl_matrix_get(m_gsl_transform, i, j);
+        }
+        printf("\n");
+    }
+
+    gsl_matrix_free(A);
+    gsl_matrix_free(B);
+    gsl_matrix_free(inv);
+    gsl_permutation_free(p);
+
+    
 
     /*
     Mat warped_face(500, 500, CV_32FC3);
