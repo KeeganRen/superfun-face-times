@@ -242,7 +242,7 @@ void FaceLib::loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point
 void FaceLib::computeTransform(Mat &frame, vector<Point2f> src, vector<Point2f> dst, Mat &xform){
     printf("[computeTransform] detected pts %d template pts %d\n", src.size(), dst.size());
 
-    xform = ( 2, 3, CV_64FC1, Scalar::all(0));
+    xform = Mat( 2, 3, CV_64FC1, Scalar::all(0));
 
     if (src.size() != dst.size()){
         printf("Error: vectors not the same size\n");

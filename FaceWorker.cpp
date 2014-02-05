@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <istream>
 #include <netdb.h>
+#include <unistd.h>
 
 int serverPort;
 char *serverHost;
@@ -88,12 +89,12 @@ int detectFace(int faceId){
     char facePath[512];
     char pointPath[512];
     sprintf(facePath, "%s%d.jpg", imageBasePath, faceId);
-    sprintf(pointPath, "%s%d_2.txt", imageBasePath, faceId); // TODO change to ../face_points/%d_2.txt"
+    sprintf(pointPath, "%s../face_points/%d_2.txt", imageBasePath, faceId); // TODO change to ../face_points/%d_2.txt"
 
     printf("\t%s \n\t%s \n", facePath, pointPath);
     
     char command[1024];
-    sprintf(command, "/projects/grail/facegame/face-server/server/bin/detect-daniel.sh %s %s", facePath, pointPath);
+    sprintf(command, "pwd && ./DetectAndLandmark %s %s", facePath, pointPath);
     int exit_code = system(command);
     return exit_code;
 }
@@ -105,12 +106,13 @@ int realignFace(int faceId){
     char pointPath[512];
     char outPath[512];
     sprintf(facePath, "%s%d.jpg", imageBasePath, faceId);
-    sprintf(pointPath, "%s%d_2.txt", imageBasePath, faceId); // TODO change to ../face_points/%d_2.txt"
-    sprintf(outPath, "%s%d_", imageBasePath, faceId);
+    sprintf(pointPath, "%s../face_points/%d_2.txt", imageBasePath, faceId); // TODO change to ../face_points/%d_2.txt"
+    sprintf(outPath, "%s%d", imageBasePath, faceId);
     printf("\t%s \n\t%s \n\t%s\n", facePath, pointPath, outPath);
     
     char command[1024];
     sprintf(command, "./alignFace %s %s %s", facePath, pointPath, outPath);
+    printf("command: %s\n", command);
     int exit_code = system(command);
     return exit_code;
 }
@@ -246,6 +248,8 @@ void connectToServerAsWorker(){
 
 
 int main(int argc, char **argv){
+
+    printf("\n\t[*note*] Don't forget to run from same directory containing binaries [DetectAndLandmark] and [alignFace]...\n");
 
     if (argc < 2 ){
         PrintUsage();

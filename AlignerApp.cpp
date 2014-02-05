@@ -185,7 +185,7 @@ void AlignerApp::test1(){
     char crop_head_file[512];
 
     sprintf(warped_file, "%s_warped.jpg", output_base);
-    sprintf(crop_face_file, "%s_cropface.jpg", output_base);
+    sprintf(crop_face_file, "%s_cropped.jpg", output_base);
     sprintf(crop_head_file, "%s_crophead.jpg", output_base);
 
     imwrite(warped_file, warped_face);

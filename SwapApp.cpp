@@ -63,6 +63,8 @@ void SwapApp::init(){
 
     cout << "A_xform" << endl;
     cout << A_xform << endl;
+    cout << "B_xform" << endl;
+    cout << B_xform << endl;
 
     A_mask = makeFullFaceMask(A, A_xform);
     B_mask = makeFullFaceMask(B, B_xform);
@@ -141,6 +143,10 @@ void SwapApp::load(char *faceAFile, char *faceBFile, char *landmarkAFile, char *
     //string maskImagefile = "data/igormask.png";
     string maskImagefile = "data/cropped_mask2.png";
     maskImage = imread(maskImagefile);
+    if (maskImage.type() == CV_8U){
+        cvtColor(maskImage, maskImage, CV_GRAY2RGB);
+        cout << "converting color" << endl;
+    }
     cout << endl << "  mask type: " << maskImage.type() << endl;
 
     /*
@@ -188,6 +194,12 @@ Mat SwapApp::makeFullFaceMask(Mat &frame, Mat &transform){
 
     Mat inverse;
     invertAffineTransform(transform, inverse);
+
+    cout << "inverse:" << endl << inverse << endl;
+    cout << mask.size() << endl;
+    cout << mask.type() << endl;
+    cout << maskImage.type() << endl;
+    cout << maskImage.size() << endl;
     warpAffine(maskImage, mask, inverse, mask.size() );
 
     return mask;
