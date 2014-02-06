@@ -51,8 +51,8 @@ void SwapApp::init(){
 
     load(faceAFile, faceBFile, landmarkAFile, landmarkBFile, clusterPath);
 
-    FaceLib::computeTransform(A, landmarkA, templatePoints2D, A_xform);
-    FaceLib::computeTransform(B, landmarkB, templatePoints2D, B_xform);
+    FaceLib::computeTransform(landmarkA, templatePoints2D, A_xform);
+    FaceLib::computeTransform(landmarkB, templatePoints2D, B_xform);
 
     Point2f cropFaceSize(225, 250);
     A_xform.at<double>(0,2) -= (500-cropFaceSize.x)/2.0;
