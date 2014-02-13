@@ -223,7 +223,7 @@ void FaceLib::loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point
     
     if (!f1){
         printf("couldn't open fiducial point file [%s]\n", file.c_str());
-        exit(0);
+        return;
     }
     
     int n; 
@@ -239,10 +239,10 @@ void FaceLib::loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point
     printf("Size of points vector loaded from [%s]: %d\n", file.c_str(), int(point_vector.size()));
 }
 
-void FaceLib::computeTransform(Mat &frame, vector<Point2f> src, vector<Point2f> dst, Mat &xform){
+void FaceLib::computeTransform(vector<Point2f> src, vector<Point2f> dst, Mat &xform){
     printf("[computeTransform] detected pts %d template pts %d\n", src.size(), dst.size());
 
-    xform = ( 2, 3, CV_64FC1, Scalar::all(0));
+    xform = Mat( 2, 3, CV_64FC1, Scalar::all(0));
 
     if (src.size() != dst.size()){
         printf("Error: vectors not the same size\n");

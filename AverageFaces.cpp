@@ -103,25 +103,34 @@ void AverageFaces::loadAndMakeAverage(char *file_list, char *output_image, char*
     double beta;
 
     for (int i = 1; i < imageFiles.size(); i++){
-        //printf("\t loading image %d [%s]\n", i, imageFiles[i].c_str());
+        printf("\t loading image %d [%s]\n", i, imageFiles[i].c_str());
         // load the image
         Mat im = imread(imageFiles[i].c_str(), CV_LOAD_IMAGE_COLOR);
-        im.convertTo(im, CV_64FC3, 1.0/255, 0);
-        
+        if (im.data != NULL){
+            if (im.size() != final_blend.size()){
+                printf("image is not the right size\n");
+                //resize(im, im, final_blend.size());
+            }
+            else {
 
-        alpha = 1.0/(i+1);
-        beta = (1 - alpha);
-        
-        addWeighted(im, alpha, final_blend, beta, 0.0, final_blend);
-        
-        if (output_vid_file){
-            final_blend.convertTo(convert_holder, CV_8UC3, 1.0*255, 0);
-            outputVideo << convert_holder;
-            outputVideo << convert_holder;
+                im.convertTo(im, CV_64FC3, 1.0/255, 0);
+
+                
+                alpha = 1.0/(i+1);
+                beta = (1 - alpha);
+                
+                addWeighted(im, alpha, final_blend, beta, 0.0, final_blend);
+                
+                if (output_vid_file){
+                    final_blend.convertTo(convert_holder, CV_8UC3, 1.0*255, 0);
+                    outputVideo << convert_holder;
+                    outputVideo << convert_holder;
+                }
+                //imshow("loaded image", im);
+                //imshow("blended image", final_blend);
+                //waitKey(80);
+            }
         }
-        //imshow("loaded image", im);
-        //imshow("blended image", final_blend);
-        //waitKey(80);
         im.release();
     }
 

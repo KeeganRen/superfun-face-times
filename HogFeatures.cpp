@@ -126,12 +126,10 @@ void HogFeatures::init(){
     vector<float> ders;
     vector<Point>locs;
 
-    Rect cropROI(128, 70, 250, 310);
 
     for (int i = 0; i < images.size(); i++){
         Mat img = imread(images[i].c_str());
         if (img.data != NULL){
-            img = img(cropROI);
 
             cvtColor(img, img, CV_BGR2GRAY);
         

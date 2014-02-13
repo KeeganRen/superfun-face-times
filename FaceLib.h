@@ -35,7 +35,7 @@ class FaceLib {
 
         static void loadFiducialPoints(string file, std::vector<cv::Point2f> &point_vector);
         static void loadNewFiducialPoints(string file, std::vector<cv::Point2f> &point_vector);
-        static void computeTransform(Mat &frame, vector<Point2f> src, vector<Point2f> dst, Mat &xform);
+        static void computeTransform(vector<Point2f> src, vector<Point2f> dst, Mat &xform);
         static Point2f middle(Point2f a, Point2f b);
         static Point2f perpendicularPoint(vector<Point2f> f);
 
