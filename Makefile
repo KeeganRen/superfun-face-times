@@ -7,7 +7,7 @@ OPENCV_PREFIX = /usr/local/Cellar/opencv/2.4.6.1/
 LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include -L/usr/lib  
 INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/usr/include -I/usr/include/opencv -I/homes/grail/ktuite/library
 
-LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video 
+LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video -lblas
 
 ANN_LIB = -L/homes/grail/ktuite/library/ann_1.1.2/lib -L/Users/ktuite/Library/ann_1.1.2/lib
 ANN_INC = -I/homes/grail/ktuite/library/ann_1.1.2/include -I/Users/ktuite/Library/ann_1.1.2/include
