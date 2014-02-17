@@ -196,10 +196,10 @@ Mat SwapApp::makeFullFaceMask(Mat &frame, Mat &transform){
     invertAffineTransform(transform, inverse);
 
     cout << "inverse:" << endl << inverse << endl;
-    cout << mask.size() << endl;
+    cout << "mask size" << mask.size() << endl;
     cout << mask.type() << endl;
     cout << maskImage.type() << endl;
-    cout << maskImage.size() << endl;
+    cout << "mask image size" << maskImage.size() << endl;
     warpAffine(maskImage, mask, inverse, mask.size() );
 
     return mask;
