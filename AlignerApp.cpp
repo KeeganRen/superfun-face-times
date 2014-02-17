@@ -75,7 +75,7 @@ void AlignerApp::load(){
     char *template_points_file = "data/averageman_symmetric.txt";
     template_points = loadPoints(template_points_file);
 
-    char *mask_file = "model/igormask.png";
+    char *mask_file = "data/igormask.png";
     mask = imread(mask_file);
 
     Mat face_with_points = face.clone();
