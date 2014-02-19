@@ -12,6 +12,7 @@ class CVOpticalFlow {
     // Move im2 to make it look like im1
     static void findFlow(Mat &vx, Mat &vy, Mat &warp, Mat &im1, Mat &im2, double alpha, double ratio, int minWidth, int nOuterFPIterations, int nInnerFPIterations, int nSORIterations);
     static Mat showFlow(Mat &vx, Mat &vy);
+    static Mat showNormalizedFlow(Mat &vx, Mat &vy);
     static void writeFlow(char* filename, Mat &vx, Mat &vy);
     static void readFlow(char* filename, Mat &vx, Mat &vy);
     static void warp(Mat &out, Mat &im, Mat &vx, Mat &vy);

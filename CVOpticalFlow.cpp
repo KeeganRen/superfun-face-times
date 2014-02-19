@@ -80,6 +80,38 @@ Mat CVOpticalFlow::showFlow(Mat &vxi, Mat &vyi) {
   }
   return out;
 }
+
+Mat CVOpticalFlow::showNormalizedFlow(Mat &vxi, Mat &vyi) {
+  Mat vx = vxi.clone();
+  Mat vy = vyi.clone();
+  int thresh = 1e9;
+  Mat out = Mat(vx.size(), CV_64FC3);
+  double maxrad = -1;
+  for (int i=0; i<out.rows; i++) {
+    for (int j=0; j<out.cols; j++) {
+      if (fabs(vx.at<double>(i, j)) > thresh) 
+        vx.at<double>(i, j) = 0;
+      if (fabs(vy.at<double>(i, j)) > thresh) 
+        vy.at<double>(i, j) = 0;
+      double rad = vx.at<double>(i, j) * vx.at<double>(i, j) + vy.at<double>(i, j) * vy.at<double>(i, j);
+      maxrad = max(maxrad, rad);
+    }
+  }
+  maxrad = sqrt(maxrad);
+  for (int i=0; i<out.rows; i++) {
+    for (int j=0; j<out.cols; j++) {
+      //vx.at<double>(i, j) /= out.cols;
+      //vy.at<double>(i, j) /= out.rows;
+      vx.at<double>(i, j) /= maxrad;
+      vy.at<double>(i, j) /= maxrad;
+      out.at<Vec3d>(i, j)[0] = vx.at<double>(i, j) * 0.5 + 0.5;
+      out.at<Vec3d>(i, j)[1] = vy.at<double>(i, j) * 0.5 + 0.5;
+      out.at<Vec3d>(i, j)[2] = 0;
+    }
+  }
+  return out;
+}
+
 inline void CVOpticalFlow::clip(int &a, int lo, int hi) {
   a = (a < lo) ? lo : (a>=hi ? hi-1: a);
 }

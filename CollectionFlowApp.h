@@ -16,6 +16,7 @@ public:
     void loadFacesFromList();
     void findImageSizeFromFirstImage();
     void openImages();
+    Mat computeImageHistogram(Mat img, Mat img2);
     void convertImages();
     void buildMatrixAndRunPca();
     void saveAs(char* filename, Mat m);
@@ -32,13 +33,16 @@ public:
     int argc;
     char **argv;
     
-    char inputFile[1024];
-    char outputDir[512];
+    char* inputFile;
+    char* outputDir;
+    char* maskFile;
     bool visualize;
     bool gray;
     vector<string> faceList;
     int w, h, d;
     vector<Mat> faceImages;
+
+    float scale;
 
     const static int borderSize = 20;
 };

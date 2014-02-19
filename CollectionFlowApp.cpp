@@ -28,6 +28,8 @@ void PrintUsage()
             "   \t--output <path to directory> [dir to put eigenface and low rank faces into]\n" \
             "   \t--visualize [visualize progress]\n" \
             "   \t--gray [convert to grayscale]\n" \
+            "   \t--mask [image to use as mask]\n" \
+            "   \t--scale (how to rescale images)\n" \
             "\n");
 }
 
@@ -39,6 +41,8 @@ void CollectionFlowApp::processOptions(int argc, char **argv){
             {"output",      1, 0, 401},
             {"visualize",   0, 0, 402},
             {"gray",        0, 0, 403},
+            {"mask",        1, 0, 404},
+            {"scale",       1, 0, 405},
             {0,0,0,0} 
         };
 
@@ -56,11 +60,11 @@ void CollectionFlowApp::processOptions(int argc, char **argv){
                 break;
                 
             case 400:
-                sprintf(inputFile, "%s", optarg);
+                inputFile = strdup(optarg);
                 break;
 
             case 401:
-                sprintf(outputDir, "%s", optarg);
+                outputDir = strdup(optarg);
                 break;
 
             case 402:
@@ -70,6 +74,15 @@ void CollectionFlowApp::processOptions(int argc, char **argv){
             case 403:
                 gray = true;
                 break;
+
+            case 404:
+                maskFile = strdup(optarg);
+                break;
+
+            case 405:
+                scale = (float)atof(optarg);
+                break;
+
                 
             default: 
                 printf("Unrecognized option %d\n", c);
@@ -82,14 +95,17 @@ void CollectionFlowApp::init(){
     printf("[init] Running program %s\n", argv[0]);
     visualize = false;
     gray = false;
-    sprintf(outputDir, ".");
-    
+    outputDir = ".";
+    scale = 1.0;
+
     if (argc < 2 ){
         PrintUsage();
         exit(0);
     }
     
     processOptions(argc, argv);
+
+    printf("done processing options\n");
     
     loadFacesFromList();
 
@@ -132,11 +148,155 @@ void CollectionFlowApp::findImageSizeFromFirstImage(){
 
     const char* firstImage = faceList[0].c_str();
     Mat img = imread(firstImage, CV_LOAD_IMAGE_COLOR);
-    w = img.rows;
-    h = img.cols;
+    w = img.rows * scale;
+    h = img.cols * scale;
     d = 3;
 
     printf("[findImageSizeFromFirstImage] First image %s: (%d x %d) %d channels\n", firstImage, w, h, d);
+}
+
+Mat CollectionFlowApp::computeImageHistogram(Mat img, Mat img2){
+    img.convertTo(img, CV_8UC3, 255, 0);
+    img2.convertTo(img2, CV_8UC3, 255, 0);
+
+    // histogram matching stuff
+    vector<Mat> img_split;
+    split( img, img_split );
+
+    // Establish the number of bins
+    int histSize = 256;
+
+    /// Set the ranges ( for B,G,R) )
+    float range[] = { 0, 255 } ;
+    const float* histRange = { range };
+
+    bool uniform = true; bool accumulate = false;
+
+    Mat b_hist, g_hist, r_hist;
+    Mat b_hist2, g_hist2, r_hist2;
+
+    // Compute the histograms:
+    calcHist( &img_split[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &img_split[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &img_split[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, uniform, accumulate );
+
+
+    vector<Mat> res_split;
+    split( img2, res_split );
+
+    calcHist( &res_split[0], 1, 0, Mat(), b_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &res_split[1], 1, 0, Mat(), g_hist2, 1, &histSize, &histRange, uniform, accumulate );
+    calcHist( &res_split[2], 1, 0, Mat(), r_hist2, 1, &histSize, &histRange, uniform, accumulate );
+
+    // todo: cdf 
+    Mat cdf_r_hist(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist(b_hist.size(), b_hist.type());
+    Mat cdf_r_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_g_hist2(b_hist.size(), b_hist.type());
+    Mat cdf_b_hist2(b_hist.size(), b_hist.type());
+
+    for( int i = 0; i < histSize; i++ ){
+        if (i == 0){
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i));
+        }
+        else {
+            cdf_r_hist.at<float>(i) = cvRound(r_hist.at<float>(i)) + cvRound(cdf_r_hist.at<float>(i-1));
+            cdf_g_hist.at<float>(i) = cvRound(g_hist.at<float>(i)) + cvRound(cdf_g_hist.at<float>(i-1));
+            cdf_b_hist.at<float>(i) = cvRound(b_hist.at<float>(i)) + cvRound(cdf_b_hist.at<float>(i-1));
+            cdf_r_hist2.at<float>(i) = cvRound(r_hist2.at<float>(i)) + cvRound(cdf_r_hist2.at<float>(i-1));
+            cdf_g_hist2.at<float>(i) = cvRound(g_hist2.at<float>(i)) + cvRound(cdf_g_hist2.at<float>(i-1));
+            cdf_b_hist2.at<float>(i) = cvRound(b_hist2.at<float>(i)) + cvRound(cdf_b_hist2.at<float>(i-1));
+        }
+    }
+
+    Mat M_r(b_hist.size(), CV_8U);
+    Mat M_g(b_hist.size(), CV_8U);
+    Mat M_b(b_hist.size(), CV_8U);
+
+    for( int i = 0; i < histSize; i++ ){
+        // i is a pixel intensity value
+        
+        int target_intensity = 255;
+        float num_pixels_in_a;
+        float num_pixels_in_b;
+
+        // r channel
+        num_pixels_in_a = cdf_r_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_r_hist.at<float>(j);
+            if (num_pixels_in_b > num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_r.at<char>(i) = target_intensity;
+
+        // g channel
+        num_pixels_in_a = cdf_g_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_g_hist.at<float>(j);
+            if (num_pixels_in_b > num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_g.at<char>(i) = target_intensity;
+
+        // b channel
+        num_pixels_in_a = cdf_b_hist2.at<float>(i);
+
+        for (int j = 0; j < histSize; j++){
+            num_pixels_in_b = cdf_b_hist.at<float>(j);
+            if (num_pixels_in_b > num_pixels_in_a){
+                target_intensity = j;
+                break;
+            }
+        }
+        M_b.at<char>(i) = target_intensity;
+    }
+
+
+
+
+    // correct one direction
+    Mat new_r(img2.size(), CV_8U);
+    Mat new_g(img2.size(), CV_8U);
+    Mat new_b(img2.size(), CV_8U);
+
+    vector<Mat> new_face;
+
+    LUT( res_split[0], M_b, new_b );
+    LUT( res_split[1], M_g, new_g );
+    LUT( res_split[2], M_r, new_r );
+
+    //imshow("res_split", res_split[0]);
+    //imshow("new b", new_b);
+    
+    new_face.push_back(new_b);
+    new_face.push_back(new_g);
+    new_face.push_back(new_r);
+
+    Mat color_corrected;
+    merge(new_face, color_corrected);
+
+    /*
+    imshow("face to match color", img);
+    imshow("uncorrected", img2);
+    imshow("color corrected", color_corrected);
+    waitKey(0);
+    */
+    
+    color_corrected.convertTo(color_corrected, CV_64FC3, 1.0/255, 0);
+
+    return color_corrected;
 }
 
 void CollectionFlowApp::openImages(){
@@ -150,7 +310,10 @@ void CollectionFlowApp::openImages(){
     for( int i = 0; i < 256; i++ )
     ptr[i] = (int)( pow( (double) i / 255.0, inverse_gamma ) * 255.0 );
 
-    Mat mask = imread("jackiechan/mask.png");
+    printf("Mask file: %s\n", maskFile);
+    Mat mask = imread(maskFile);
+    printf("Mask size: %d x %d\n", mask.rows, mask.cols);
+
 
     for (int i = 0; i < faceList.size(); i++){
         printf("opening image %d: %s\n", i, faceList[i].c_str());
@@ -176,13 +339,29 @@ void CollectionFlowApp::openImages(){
 
 
             result = m;
+
+            resize(result, result, Size(), scale, scale);
+
             
+            if (i > 0){
+                result = computeImageHistogram(faceImages[0], result);
+            }
+            
+
             faceImages.push_back(result);
+            
+
+            if (visualize){
+                imshow("loaded masked image", result);
+                waitKey(3);
+            }
         }
         else {
             printf("Error loading image %s\n", faceList[i].c_str());
         }
     }
+
+    destroyWindow("loaded masked image");
 
 }
 
@@ -205,7 +384,7 @@ void CollectionFlowApp::convertImages(){
     if (visualize){
         Mat m = faceImages[0];
         imshow("Converted image", m);
-        waitKey(0);
+        waitKey(100);
     }
 }
 
@@ -328,6 +507,9 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
     // the low rank images
     gsl_matrix *m_gsl_mat_k = gsl_matrix_calloc(num_pixels, num_images);
 
+    // the eigen images
+    gsl_matrix *m_gsl_mat_work = gsl_matrix_calloc(num_pixels, num_images);
+
     for (int i = 0; i < faceImages.size(); i++){
         // populate matrix of original images
         gsl_vector_view col = gsl_matrix_column(m_gsl_mat, i);
@@ -358,11 +540,15 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
         printf("[buildMatrixAndRunPca] Mean computed\n");
 
+        Mat vis_img = Mat::zeros(w, h*(k+2), CV_64FC3);
+        printf(" vis_img size %d x %d  and  h x w = %d x %d\n", vis_img.rows, vis_img.cols, h, w);
+
         Mat m;
         gslVecToMat(m_gsl_mean, m);
         if (visualize){    
-            imshow("mean image", m);
-            waitKey(0);
+            Mat dst_roi = vis_img(Rect(0, 0, h, w));
+            m.copyTo(dst_roi);
+            imshow("mean image and eigenfaces", vis_img);
         }
         char filename[100];
         sprintf(filename, "%s/mean-rank%02d-%d.jpg", outputDir, k, r);
@@ -380,12 +566,6 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
                 gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
                 gsl_vector_sub(&col.vector, m_gsl_mean);
             }
-            
-            gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, 1);
-            Mat face;
-            gslVecToMat(&(col.vector), face);
-            if (visualize)
-                imshow("face with mean subtracted", face);
         }
 
         gsl_vector *S = gsl_vector_calloc(num_images);
@@ -413,7 +593,10 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             if (visualize){
                 char eig_title[30];
                 sprintf(eig_title, "eigenface #%d", i);
-                imshow(eig_title, eigenface);
+                //imshow(eig_title, eigenface);
+                Mat dst_roi = vis_img(Rect(h*(i+1), 0, h, w));
+                eigenface.copyTo(dst_roi);
+                imshow("mean image and eigenfaces", vis_img);
             }
 
             char filename[100];
@@ -425,7 +608,6 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             saveBinaryEigenface(filenameBin, vec_work);
             
         }
-        
 
         gsl_matrix *S_mat = gsl_matrix_calloc(num_images, num_images);
         gsl_matrix_set_zero(S_mat);
@@ -434,21 +616,28 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             printf("\tSVD %d: %f\n", i, gsl_vector_get(S, i));
             gsl_matrix_set(S_mat, i, i, gsl_vector_get(S, i));
         }
+
+
         
         gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,
                            1.0, m_gsl_mat_k, S_mat,
-                           0.0, m_gsl_mat_k);
+                           0.0, m_gsl_mat_work);
 
         
         gsl_blas_dgemm (CblasNoTrans, CblasTrans,
-                           1.0, m_gsl_mat_k, V,
+                           1.0, m_gsl_mat_work, V,
                            0.0, m_gsl_mat_k);
-
 
         if (use_mean){
             printf("[buildMatrixAndRunPca] Adding mean back\n");
             for (int i = 0; i < faceImages.size(); i++){
                 gsl_vector_view col = gsl_matrix_column(m_gsl_mat_k, i);
+                gsl_vector_view col_o = gsl_matrix_column(m_gsl_mat, i);
+                /*printf("\nwhat does the inside of this low rank matrix look like?\n");
+                for (int j = 0; j < w*h*d; j++){
+                    printf("\t[%f|%f] ", gsl_vector_get(&col.vector, j),  gsl_vector_get(&col_o.vector, j));
+                }
+                */
                 gsl_vector_add(&col.vector, m_gsl_mean);
             }
         }
@@ -470,9 +659,14 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             gsl_vector_view col_high = gsl_matrix_column(m_gsl_mat, i);
             gslVecToMat(&col_high.vector, m_highrank);
     
+            Mat vis_img = Mat::zeros(w, h*4, CV_64FC3);    
+
             if (visualize){
-                imshow("high rank", m_highrank);
-                imshow("low rank", m_lowrank);
+                Mat dst_roi = vis_img(Rect(0, 0, h, w));
+                m_lowrank.copyTo(dst_roi);
+                dst_roi = vis_img(Rect(h, 0, h, w));
+                m_highrank.copyTo(dst_roi);
+                imshow("high, low, warped, flow", vis_img);
             }
 
             char filename1[100], filename2[100], filename3[100];
@@ -500,15 +694,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             int nSORIterations = 40; // sometimes use 20
             
             Mat vx, vy, warp;
-            Mat vx2, vy2, warp2
+            Mat vx2, vy2, warp2;
             
             CVOpticalFlow::findFlow(vx, vy, warp, m_lowrank, m_highrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-            CVOpticalFlow::findFlow(vx2, vy2, warp2, m_highrank, m_lowrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
-            if (visualize){
-                imshow("the warped picture", warp);
-                imshow("flow", CVOpticalFlow::showFlow(vx, vy));
-                imshow("flow2", CVOpticalFlow::showFlow(vx2, vy2));
-            }
+            //CVOpticalFlow::findFlow(vx2, vy2, warp2, m_highrank, m_lowrank, alpha, ratio, minWidth, nOuterFPIterations, nInnerFPIterations, nSORIterations);
+
 
             Mat warped;
             if (gray){
@@ -521,17 +711,21 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             m_highrank = warped;
 
             if (visualize){
-                imshow("warped back", m_highrank);
-                waitKey(0);
+                Mat dst_roi = vis_img(Rect(h*2, 0, h, w));
+                warped.copyTo(dst_roi);
+                Mat flow_img = CVOpticalFlow::showNormalizedFlow(vx, vy);
+                dst_roi = vis_img(Rect(h*3, 0, h, w));
+                flow_img.copyTo(dst_roi);
+                imshow("high, low, warped, flow", vis_img);
+                waitKey(10);
             }
 
             matToGslVec(m_highrank, &col_low.vector);
 
-
             CVOpticalFlow::writeFlow(flowFile, vx, vy);
             saveAs(filename3, m_highrank);
             saveAs(flowImage, CVOpticalFlow::showFlow(vx, vy));
-            saveAs(flowImage2, CVOpticalFlow::showFlow(vx2, vy2));
+            //saveAs(flowImage2, CVOpticalFlow::showFlow(vx2, vy2));
             
         }
     }
