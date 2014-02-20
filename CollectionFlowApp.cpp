@@ -329,6 +329,7 @@ void CollectionFlowApp::openImages(){
         Mat m;
         histImage.copyTo(m, mask);
         histImage = m;
+        resize(histImage, histImage, Size(), scale, scale);
     }
 
     for (int i = 0; i < faceList.size(); i++){
