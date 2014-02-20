@@ -174,7 +174,7 @@ Mat CollectionFlowApp::computeImageHistogram(Mat img, Mat img2){
     int histSize = 256;
 
     /// Set the ranges ( for B,G,R) )
-    float range[] = { 0, 255 } ;
+    float range[] = {0, 255} ;
     const float* histRange = { range };
 
     bool uniform = true; bool accumulate = false;
@@ -222,6 +222,14 @@ Mat CollectionFlowApp::computeImageHistogram(Mat img, Mat img2){
         }
     }
 
+    int i = histSize - 1;
+    cdf_r_hist.at<float>(i) = w*h;
+    cdf_g_hist.at<float>(i) = w*h;
+    cdf_b_hist.at<float>(i) = w*h;
+    cdf_r_hist2.at<float>(i) = w*h;
+    cdf_g_hist2.at<float>(i) = w*h;
+    cdf_b_hist2.at<float>(i) = w*h;
+
     Mat M_r(b_hist.size(), CV_8U);
     Mat M_g(b_hist.size(), CV_8U);
     Mat M_b(b_hist.size(), CV_8U);
@@ -268,8 +276,12 @@ Mat CollectionFlowApp::computeImageHistogram(Mat img, Mat img2){
             }
         }
         M_b.at<char>(i) = target_intensity;
+
     }
 
+    //M_b.at<char>(histSize) = histSize;
+    //M_r.at<char>(histSize) = histSize;
+    //M_g.at<char>(histSize) = histSize;
 
 
 
@@ -309,14 +321,6 @@ Mat CollectionFlowApp::computeImageHistogram(Mat img, Mat img2){
 void CollectionFlowApp::openImages(){
     printf("[openImages] %d images in list\n", (int)faceList.size());
 
-    double gamma = 1.8;
-    double inverse_gamma = 1.0 / gamma;
-
-    Mat lut_matrix(1, 256, CV_8UC1 );
-    uchar * ptr = lut_matrix.ptr();
-    for( int i = 0; i < 256; i++ )
-    ptr[i] = (int)( pow( (double) i / 255.0, inverse_gamma ) * 255.0 );
-
     printf("Mask file: %s\n", maskFile);
     Mat mask = imread(maskFile);
     printf("Mask size: %d x %d\n", mask.rows, mask.cols);
@@ -326,8 +330,8 @@ void CollectionFlowApp::openImages(){
         printf("using this image to match histograms: %s\n", histImageFile);
         histImage = imread(histImageFile);
         histImage.convertTo(histImage, CV_64FC3, 1.0/255, 0);
-        Mat m;
-        m = Scalar(1.0, 1.0, 1.0);
+        Mat m = Mat(histImage.rows, histImage.cols, CV_64FC3);
+        m = Scalar(255, 255, 255);
         histImage.copyTo(m, mask);
         histImage = m;
         resize(histImage, histImage, Size(), scale, scale);
@@ -342,19 +346,12 @@ void CollectionFlowApp::openImages(){
             }
 
             Mat result;
+            img.convertTo(result, CV_64FC3, 1.0/255, 0);
 
-            if (0){
-                // gamma correction
-                LUT( img, lut_matrix, result );
-                result.convertTo(result, CV_64FC3, 1.0/255, 0);
-            }
-            else {
-                img.convertTo(result, CV_64FC3, 1.0/255, 0);
-            }
-
-            Mat m;
+            Mat m = Mat(img.rows, img.cols, CV_64FC3);
+            m = Scalar(255, 255, 255);
+            
             result.copyTo(m, mask);
-
 
             result = m;
 
@@ -364,15 +361,16 @@ void CollectionFlowApp::openImages(){
             if (histImageFile){
                 result = computeImageHistogram(histImage, result);
             }
-            
 
             faceImages.push_back(result);
             
 
             if (visualize){
+                imshow("uncolored", m);
                 imshow("loaded masked image", result);
                 waitKey(3);
             }
+
         }
         else {
             printf("Error loading image %s\n", faceList[i].c_str());
