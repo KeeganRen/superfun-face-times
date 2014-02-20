@@ -327,6 +327,7 @@ void CollectionFlowApp::openImages(){
         histImage = imread(histImageFile);
         histImage.convertTo(histImage, CV_64FC3, 1.0/255, 0);
         Mat m;
+        m = Scalar(1.0, 1.0, 1.0);
         histImage.copyTo(m, mask);
         histImage = m;
         resize(histImage, histImage, Size(), scale, scale);
@@ -687,15 +688,16 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
             }
 
             char filename1[100], filename2[100], filename3[100];
-            char flowFile[100], flowImage[100], flowImage2[100];
+            char flowFile[100], flowImage[100], flowImage2[100], flowImage3[100];
             const char *faceStr = faceFileName(i);
             printf("face filename: %s\n", faceStr);
             sprintf(filename1, "%s/%s-orig-%d.jpg", outputDir, faceStr, k);
             sprintf(filename2, "%s/%s-low-%d.jpg", outputDir, faceStr, k);
             sprintf(filename3, "%s/%s-warped-%d.jpg", outputDir, faceStr, k);
             sprintf(flowFile,  "%s/%s-flow-%d.bin", outputDir, faceStr, k);
-            sprintf(flowImage,  "%s/%s-flow-%d.jpg", outputDir, faceStr, k);
-            sprintf(flowImage2,  "%s/%s-flow2-%d.jpg", outputDir, faceStr, k);
+            sprintf(flowImage,  "%s/%s-flow-%d.png", outputDir, faceStr, k);
+            sprintf(flowImage2,  "%s/%s-flow2-%d.png", outputDir, faceStr, k);
+            sprintf(flowImage3,  "%s/%s-flow-normalized-%d.png", outputDir, faceStr, k);
 
             saveAs(filename1, m_highrank);
             saveAs(filename2, m_lowrank);
@@ -739,10 +741,11 @@ void CollectionFlowApp::buildMatrixAndRunPca(){
 
             matToGslVec(m_highrank, &col_low.vector);
 
-            CVOpticalFlow::writeFlow(flowFile, vx, vy);
+            //CVOpticalFlow::writeFlow(flowFile, vx, vy);
             saveAs(filename3, m_highrank);
             saveAs(flowImage, CVOpticalFlow::showFlow(vx, vy));
             //saveAs(flowImage2, CVOpticalFlow::showFlow(vx2, vy2));
+            saveAs(flowImage3, CVOpticalFlow::showNormalizedFlow(vx, vy));
             
         }
     }
