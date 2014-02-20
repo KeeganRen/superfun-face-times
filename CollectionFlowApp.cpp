@@ -361,6 +361,15 @@ void CollectionFlowApp::openImages(){
             if (histImageFile){
                 result = computeImageHistogram(histImage, result);
             }
+            else { 
+                if (i > 0){
+                    result = computeImageHistogram(faceImages[0], result);
+                }
+                else {
+                    result = computeImageHistogram(result, result);
+                    // some magic is happening there to make the cflow not flip out about the white background
+                }
+            }
 
             faceImages.push_back(result);
             
