@@ -29,6 +29,7 @@ void PrintUsage()
             "   \t--visualize [visualize progress]\n" \
             "   \t--gray [convert to grayscale]\n" \
             "   \t--mask [image to use as mask]\n" \
+            "   \t--histogram [image to use as histogram matcher]\n" \
             "   \t--scale (how to rescale images)\n" \
             "\n");
 }
@@ -43,6 +44,7 @@ void CollectionFlowApp::processOptions(int argc, char **argv){
             {"gray",        0, 0, 403},
             {"mask",        1, 0, 404},
             {"scale",       1, 0, 405},
+            {"histogram",   1, 0, 406},
             {0,0,0,0} 
         };
 
@@ -83,6 +85,10 @@ void CollectionFlowApp::processOptions(int argc, char **argv){
                 scale = (float)atof(optarg);
                 break;
 
+            case 406:
+                histImageFile = strdup(optarg);
+                break;
+
                 
             default: 
                 printf("Unrecognized option %d\n", c);
@@ -96,6 +102,7 @@ void CollectionFlowApp::init(){
     visualize = false;
     gray = false;
     outputDir = ".";
+    histImageFile = NULL;
     scale = 1.0;
 
     if (argc < 2 ){
@@ -314,6 +321,15 @@ void CollectionFlowApp::openImages(){
     Mat mask = imread(maskFile);
     printf("Mask size: %d x %d\n", mask.rows, mask.cols);
 
+    Mat histImage;
+    if (histImageFile){
+        printf("using this image to match histograms: %s\n", histImageFile);
+        histImage = imread(histImageFile);
+        histImage.convertTo(histImage, CV_64FC3, 1.0/255, 0);
+        Mat m;
+        histImage.copyTo(m, mask);
+        histImage = m;
+    }
 
     for (int i = 0; i < faceList.size(); i++){
         printf("opening image %d: %s\n", i, faceList[i].c_str());
@@ -343,8 +359,8 @@ void CollectionFlowApp::openImages(){
             resize(result, result, Size(), scale, scale);
 
             
-            if (i > 0){
-                result = computeImageHistogram(faceImages[0], result);
+            if (histImageFile){
+                result = computeImageHistogram(histImage, result);
             }
             
 

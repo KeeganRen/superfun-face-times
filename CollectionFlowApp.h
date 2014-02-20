@@ -36,6 +36,7 @@ public:
     char* inputFile;
     char* outputDir;
     char* maskFile;
+    char* histImageFile;
     bool visualize;
     bool gray;
     vector<string> faceList;
