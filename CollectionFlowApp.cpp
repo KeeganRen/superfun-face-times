@@ -349,7 +349,7 @@ void CollectionFlowApp::openImages(){
             img.convertTo(result, CV_64FC3, 1.0/255, 0);
 
             Mat m = Mat(img.rows, img.cols, CV_64FC3);
-            m = Scalar(255, 255, 255);
+            m = Scalar(1.0, 1.0, 1.0);
             
             result.copyTo(m, mask);
 
@@ -360,15 +360,6 @@ void CollectionFlowApp::openImages(){
             
             if (histImageFile){
                 result = computeImageHistogram(histImage, result);
-            }
-            else { 
-                if (i > 0){
-                    result = computeImageHistogram(faceImages[0], result);
-                }
-                else {
-                    result = computeImageHistogram(result, result);
-                    // some magic is happening there to make the cflow not flip out about the white background
-                }
             }
 
             faceImages.push_back(result);
