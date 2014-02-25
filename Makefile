@@ -5,7 +5,7 @@ CFLAGS=-c -Wall -O3 -g
 OPENCV_PREFIX = /usr/local/Cellar/opencv/2.4.6.1/
 
 LIBDIR = -L/usr/X11R6/lib -I$(OPENCV_PREFIX)/include -L/usr/lib  
-INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/usr/include -I/usr/include/opencv -I/homes/grail/ktuite/library
+INCDIR = -I/opt/local/include -L$(OPENCV_PREFIX)/lib -I/Users/ktuite/Library -I/usr/include -I/usr/include/opencv -I/homes/grail/ktuite/library -I/usr/local/Cellar/eigen/3.2.0/include/eigen3
 
 LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -lopencv_video 
 

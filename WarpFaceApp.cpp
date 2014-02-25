@@ -138,15 +138,15 @@ void WarpFaceApp::init(){
 
 
     setupShapeStuff();
-    populateTemplateMatrix();
+    //populateTemplateMatrix();
 
 
     /* some tests */
     //testIntegrability();
     //testTemplate();
-    //testTemplateVsCanonical();
+    testTemplateVsCanonical();
     
-    populateImageMatrix();
+    //populateImageMatrix();
 
 
 
@@ -320,7 +320,7 @@ void WarpFaceApp::loadFaceSpecificFiles(){
     }
     faceImage.convertTo(faceImage, CV_64FC3, 1.0/255, 0);
 
-    printf("[loadFaceSpecificFiles] loading pre-detected 10 points of face from file %s\n", facePointsFile);
+    printf("[loadFaceSpecificFiles] loading pre-detected points of face from file %s\n", facePointsFile);
     FILE *file = fopen ( facePointsFile, "r" );
     if ( file != NULL ) {
         float x, y;
@@ -332,6 +332,8 @@ void WarpFaceApp::loadFaceSpecificFiles(){
     else {
         perror (facePointsFile);
     }
+
+    printf("number of pts loaded: %d\n", facePoints.size());
 }
 
 void WarpFaceApp::loadTemplateFiles(){
@@ -346,8 +348,10 @@ void WarpFaceApp::loadTemplateFiles(){
     file = fopen ( templateMeshFile, "r" );
     if ( file != NULL ) {
         float x, y, z, nx, ny, nz;
-        int r, g, b, a;
-        while( fscanf(file, "%f %f %f %f %f %f %d %d %d %d \n", &x, &y, &z, &nx, &ny, &nz, &r, &g, &b, &a) > 0 ) {
+        int r, g, b;
+        float a;
+        while( fscanf(file, "%f %f %f %d %d %d %f \n", &x, &y, &z, &nx, &ny, &nz, &r, &g, &b, &a) > 0 ) {
+        //while( fscanf(file, "%f %f %f %f %f %f %d %d %d %d \n", &x, &y, &z, &nx, &ny, &nz, &r, &g, &b, &a) > 0 ) {
         //while( fscanf(file, "%f %f %f %f %f %f\n", &x, &y, &z, &nx, &ny, &nz) > 0 ) {
             templateMesh.push_back(Point3f(x,y,z));
             templateNormals.push_back(Point3f(nx,ny,nz));
