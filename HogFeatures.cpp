@@ -132,9 +132,9 @@ void HogFeatures::init(){
         if (img.data != NULL){
 
             cvtColor(img, img, CV_BGR2GRAY);
-        
+
             d.compute(img,ders,Size(32,32),Size(0,0),locs);
-        
+
             /*
             cout << "HOG descriptor size is " << d.getDescriptorSize() << endl;
             cout << "img dimensions: " << img.cols << " width x " << img.rows << "height" << endl;
@@ -144,6 +144,7 @@ void HogFeatures::init(){
             cout << "locs size: " << locs.size() << endl;;
             cout << "ders size: " << ders.size() << endl;;
             */
+            
 
             for(int i=0;i<ders.size();i++) {
                 fprintf(hog_file, "%f ", ders.at(i));
