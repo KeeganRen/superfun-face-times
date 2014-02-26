@@ -222,7 +222,7 @@ void Shape3DApp::loadTemplateFiles(){
         while( fscanf(file, "%f %f %f %f %f %f %d %d %d %d \n", &x, &y, &z, &nx, &ny, &nz, &r, &g, &b, &a) > 0 ) {
         //while( fscanf(file, "%f %f %f %f %f %f\n", &x, &y, &z, &nx, &ny, &nz) > 0 ) {
             templateMesh.push_back(Point3f(x,y,z));
-            templateNormals.push_back(Point3f(nx,ny,nz));
+            templateNormals.push_back(Point3f(nx,ny,-1*nz));
 
             //r = 155;
             //g = 155;

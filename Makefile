@@ -70,6 +70,9 @@ clean:
 
 $(NEARESTFACE): $(NEARESTFACESOURCES) 
 	$(CC) $(NEARESTFACESOURCES) -o $@ 
+
+gridifyMesh: GridifyMesh.cpp 
+	$(CC) GridifyMesh.cpp $(INCDIR) $(LIBDIR) -o $@ -lopencv_highgui -lopencv_imgproc -lopencv_core
     
 $(COLLECTIONFLOWFACE): $(COLLECTIONFLOWSOURCES)  $(FLOWOBJECTS) 
 	$(CC) $(FLOWFLAGS) $(INCDIR) $(LIBDIR) $(COLLECTIONFLOWSOURCES) $(FLOWOBJECTS)  -o $@ $(LIBS)
