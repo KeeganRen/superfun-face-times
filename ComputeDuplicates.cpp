@@ -145,6 +145,9 @@ void ComputeDuplicates::matchBuildList(){
     double threshold = 2000000.0;
 
     for (int i = 0; i < images.size(); i++){
+        if (i % 100 == 0){
+            printf("face %d\n", i);
+        }
         bool in_list = false;
 
         // compare against stuff in list already
