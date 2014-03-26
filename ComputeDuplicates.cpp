@@ -141,12 +141,12 @@ void ComputeDuplicates::match(){
 
 void ComputeDuplicates::matchBuildList(){
     int dupes = 0;
-    int unique = 0;
+    int d = 0;
     double threshold = 2000000.0;
 
     for (int i = 0; i < images.size(); i++){
         if (i % 100 == 0){
-            printf("face %d\n", i);
+            printf("face %d, size of unique list so far: %d\n", i, matches.size());
         }
         bool in_list = false;
 
@@ -168,29 +168,11 @@ void ComputeDuplicates::matchBuildList(){
         }
 
         if (!in_list){
-            bool no_matches_found = true;
-
-            for (int j = i + 1; j < images.size(); j++){
-                Mat A = images[i];
-                Mat B = images[j];
-                double n = norm(A,B,NORM_L1);
-                if (n < threshold){
-                    matches[i].push_back(i);
-                    matches[i].push_back(j);
-                    dupes += 1;
-                    no_matches_found = false;
-                    break;
-                }   
-            }
-
-            if (no_matches_found){
-                unique += 1;
-            }
+            matches[i].push_back(i);
         }
     }
 
-    printf("%d/%d duplicates (%f percent)\n", dupes, images.size(), float(dupes)/images.size());
-    printf("%d/%d unique (%f percent)\n", unique, images.size(), float(unique)/images.size());
+    printf("%d/%d distinct faces (%f) \n", matches.size(), images.size(), float(matches.size())/images.size());
 }
 
 
