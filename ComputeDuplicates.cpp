@@ -146,7 +146,7 @@ void ComputeDuplicates::matchBuildList(){
 
     for (int i = 0; i < images.size(); i++){
         if (i % 100 == 0){
-            printf("face %d, size of unique list so far: %d\n", i, matches.size());
+            printf("face %d, size of distinct list so far: %d\n", i, matches.size());
         }
         bool in_list = false;
 
