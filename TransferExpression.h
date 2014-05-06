@@ -38,6 +38,9 @@ public:
     char *referenceDir;
     char *targetDir; 
     char *saveExtension;
+    char *maskFile;
+
+    Mat mask;
 
     vector<string> faceList;
     Mat face;

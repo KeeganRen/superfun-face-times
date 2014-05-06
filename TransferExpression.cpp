@@ -26,6 +26,7 @@ void PrintUsage()
     printf("Usage:  \n" \
             "   \t--face <file> [single face file]\n" \
             "   \t--faceList <file> [list of faces]\n" \
+            "   \t--mask <file> [optional mask to apply to face]\n" \
             "\n" \
             "   \t--sourceDir <file> [directory containing eigenfaces and mean face of SOURCE expression]\n" \
             "   \t--referenceDir <file> [directory containing eigenfaces and mean face of REFERENCE (neutral) expression]\n" \
@@ -48,6 +49,7 @@ void TransferExpression::processOptions(int argc, char **argv){
             {"referenceDir",1, 0, 407},
             {"targetDir",   1, 0, 408},
             {"save",        1, 0, 409},
+            {"mask",        1, 0, 410},
             {0,0,0,0} 
         };
 
@@ -92,6 +94,10 @@ void TransferExpression::processOptions(int argc, char **argv){
                 saveExtension = optarg;
                 break;
 
+            case 410:
+                maskFile = optarg;
+                break;
+
             default: 
                 printf("Unrecognized option %d\n", c);
                 break;
@@ -105,6 +111,7 @@ void TransferExpression::init(){
     faceFile = NULL;
     faceListFile = NULL;
     saveExtension = NULL;
+    maskFile = NULL;
 
     if (argc < 2 ){
         PrintUsage();
@@ -135,14 +142,20 @@ void TransferExpression::load(){
         waitKey(100);
     }
 
+    if (maskFile){
+        mask = imread(maskFile);
+        printf("Mask size: %d x %d\n", mask.rows, mask.cols);
+
+        Mat m = Mat(face.rows, face.cols, CV_64FC3);
+        m = Scalar(1.0, 1.0, 1.0);    
+        face.copyTo(m, mask);
+        face = m;
+    }
+
     if (saveExtension){
         char filename[500];
         sprintf(filename, "%s_orig.jpg", saveExtension);
         saveAs(filename, face);
-    }
-
-    if (m_gsl_source_meanface == NULL){
-        printf("should be null here\n");
     }
 
     loadEigenfaces(sourceDir, &m_gsl_source_eigenfaces, &m_gsl_source_meanface);
