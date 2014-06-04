@@ -12,6 +12,9 @@ LIBS = -lopencv_highgui -lopencv_imgproc -lopencv_core -lopencv_calib3d -lgsl -l
 ANN_LIB = -L/homes/grail/ktuite/library/ann_1.1.2/lib -L/Users/ktuite/Library/ann_1.1.2/lib
 ANN_INC = -I/homes/grail/ktuite/library/ann_1.1.2/include -I/Users/ktuite/Library/ann_1.1.2/include
 
+VL_INC = -I/Users/ktuite/Library/vlfeat-0.9.18
+VL_LIB = -L/Users/ktuite/Library/vlfeat-0.9.18/bin/maci64
+
 COLLECTIONFLOWFACE=collectionFlow
 COLLECTIONFLOWSOURCES=CollectionFlowApp.cpp
 
@@ -71,6 +74,9 @@ COMPUTEDUPLICATESSOURCES=ComputeDuplicates.cpp
 NEARESTFACE=nearestFace
 NEARESTFACESOURCES=NearestFace.cpp
 
+LBPDIST=lbpDistance
+LBPDISTSOURCES=LBP.cpp
+
 all: $(COLLECTIONFLOWFACE) $(WARPFACE) $(FLOWFACE) $(MORPHFACE) $(SHAPEFACE) $(INCCFLOW) $(SWAPFACE) $(AVGFACE) $(PHOTOBIO)
 
 clean: 
@@ -79,6 +85,9 @@ clean:
 
 $(NEARESTFACE): $(NEARESTFACESOURCES) 
 	$(CC) $(NEARESTFACESOURCES) -o $@ 
+
+$(LBPDIST): $(LBPDISTSOURCES)
+	$(CC) $(LBPDISTSOURCES) $(INCDIR) $(LIBDIR) $(VL_INC) $(VL_LIB) -o $@ -lopencv_highgui -lopencv_imgproc -lopencv_core -lvl
 
 gridifyMesh: GridifyMesh.cpp 
 	$(CC) GridifyMesh.cpp $(INCDIR) $(LIBDIR) -o $@ -lopencv_highgui -lopencv_imgproc -lopencv_core
